@@ -1,105 +1,79 @@
 import streamlit as st
 from datetime import datetime
 
-# 1. CONFIGURACIÓN E IDENTIDAD
+# 1. CONFIGURACIÓN
 st.set_page_config(page_title="MantenTuJardin Admin", layout="centered")
 
-# 2. CSS DE ALTO NIVEL (Diseño App Nativa)
+# 2. CSS DE ALTO CONTRASTE (CORRECCIÓN DE COLORES)
 st.markdown("""
     <style>
-    /* Fondo general */
+    /* Fondo de la app claro para que resalten los campos */
     .stApp { background-color: #F0F2F5; }
     
-    /* Input Fields Profesionales */
+    /* Forzar color de texto en etiquetas (Labels) para que se vean sí o sí */
+    label, p, span, .stMarkdown {
+        color: #1C1E21 !important; 
+        font-weight: 600 !important;
+    }
+
+    /* Estilo de los cuadros de texto (Inputs) */
     .stTextInput input, .stNumberInput input, .stSelectbox div {
-        background-color: white !important;
-        color: #1C1E21 !important;
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 2px solid #2E7D32 !important; /* Borde verde para resaltar */
         border-radius: 8px !important;
-        border: 1px solid #CCD0D5 !important;
     }
-    
-    /* Botones de Navegación */
+
+    /* Botón GUARDAR (Verde fuerte con letra blanca) */
     div.stButton > button {
-        border-radius: 8px;
-        font-weight: 600;
-        height: 50px;
-        transition: 0.3s;
-    }
-    
-    /* Botón Principal (Verde Corporativo) */
-    .btn-main button {
         background-color: #2E7D32 !important;
-        color: white !important;
+        color: #FFFFFF !important;
         border: none !important;
-        width: 100%;
+        height: 55px !important;
+        width: 100% !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
     }
-    
-    /* Contenedor de Formulario */
+
+    /* Tarjeta contenedora blanca */
     .main-card {
-        background-color: white;
-        padding: 25px;
+        background-color: #FFFFFF;
+        padding: 20px;
         border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        margin-top: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LÓGICA DE ESTADO ---
-if 'auth' not in st.session_state: st.session_state.auth = False
-if 'view' not in st.session_state: st.session_state.view = "LOGIN"
+# --- LÓGICA DE NAVEGACIÓN ---
+if 'view' not in st.session_state: st.session_state.view = "MENU"
 
-# --- LOGIN ---
-if not st.session_state.auth:
+# --- VISTA PRINCIPAL ---
+if st.session_state.view == "MENU":
     st.markdown("<h1 style='text-align:center; color:#2E7D32;'>MantenTuJardin</h1>", unsafe_allow_html=True)
-    with st.container():
-        st.markdown('<div class="main-card">', unsafe_allow_html=True)
-        user = st.text_input("Usuario")
-        pw = st.text_input("Clave", type="password")
-        if st.button("ACCEDER"):
-            if user == "esteban" and pw == "admin123":
-                st.session_state.auth = True; st.session_state.view = "MENU"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    if st.button("📍 GESTIÓN DE CLIENTES"):
+        st.session_state.view = "CLIENTES"; st.rerun()
 
-else:
-    # --- MENÚ PRINCIPAL ---
-    if st.session_state.view == "MENU":
-        st.markdown("### Panel de Administración")
-        st.markdown('<div class="btn-main">', unsafe_allow_html=True)
-        if st.button("📍 GESTIÓN DE CLIENTES"):
-            st.session_state.view = "CLIENTES"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        if st.button("🚪 CERRAR SESIÓN"):
-            st.session_state.auth = False; st.rerun()
-
-    # --- VISTA CLIENTES ---
-    elif st.session_state.view == "CLIENTES":
-        col_back, col_title = st.columns([1, 4])
-        with col_back:
-            if st.button("⬅️"): st.session_state.view = "MENU"; st.rerun()
-        with col_title:
-            st.subheader("📍 Clientes")
-
-        tab1, tab2, tab3 = st.tabs(["➕ NUEVO", "✏️ EDITAR", "🗑️ BORRAR"])
-
-        with tab1:
-            st.markdown('<div class="main-card">', unsafe_allow_html=True)
-            st.markdown("#### Registro de Cliente")
-            nom = st.text_input("Nombre Completo")
-            dir = st.text_input("Dirección Google Maps")
-            ser = st.text_input("Servicio Contratado (Ej: Jardín + Piscina)")
-            
-            c1, c2 = st.columns(2)
-            with c1: val = st.number_input("Valor del Servicio", min_value=0, step=5000)
-            with c2: frq = st.selectbox("Modalidad", ["Mensual", "Por Visita"])
-            
-            st.markdown('<div class="btn-main">', unsafe_allow_html=True)
-            if st.button("💾 GUARDAR CLIENTE"):
-                st.success(f"Cliente {nom} registrado con éxito.")
-            st.markdown('</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with tab2:
-            st.write("Seleccione cliente para modificar...")
-            st.selectbox("Buscar Cliente", ["Yasna", "Francisca"])
+# --- VISTA CLIENTES (CON COLORES REPARADOS) ---
+elif st.session_state.view == "CLIENTES":
+    if st.button("⬅️ VOLVER AL MENÚ"):
+        st.session_state.view = "MENU"; st.rerun()
+    
+    st.markdown("<div class='main-card'>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#2E7D32;'>📍 Registro de Cliente</h2>", unsafe_allow_html=True)
+    
+    # Campos con etiquetas ahora visibles
+    nom = st.text_input("Nombre Completo del Cliente")
+    dir = st.text_input("Dirección (Calle, Número, Comuna)")
+    ser = st.text_input("Servicio (Ej: Jardín Completo + Piscina)")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        val = st.number_input("Valor del Servicio ($)", min_value=0, step=1000)
+    with c2:
+        frq = st.selectbox("Modalidad de Pago", ["Mensual", "Por Visita"])
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("💾 GUARDAR CLIENTE"):
+        st.success(f"¡Cliente {nom} guardado con éxito!")
+    st.markdown("</div>", unsafe_allow_html=True)
