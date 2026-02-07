@@ -1,94 +1,105 @@
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 
-# 1. CONFIGURACIÓN DE PÁGINA
-st.set_page_config(page_title="MantenTuJardin Pro", layout="centered")
+# 1. CONFIGURACIÓN E IDENTIDAD
+st.set_page_config(page_title="MantenTuJardin Admin", layout="centered")
 
-# 2. ESTILO PROFESIONAL (CSS)
+# 2. CSS DE ALTO NIVEL (Diseño App Nativa)
 st.markdown("""
     <style>
-    .stApp { background-color: #F8F9FA; }
-    div.stButton > button {
-        width: 100%; height: 65px; border-radius: 12px;
-        font-weight: bold; font-size: 18px; margin-bottom: 10px;
-        background-color: #FFFFFF; color: #1A5D1A; border: 1px solid #1A5D1A;
+    /* Fondo general */
+    .stApp { background-color: #F0F2F5; }
+    
+    /* Input Fields Profesionales */
+    .stTextInput input, .stNumberInput input, .stSelectbox div {
+        background-color: white !important;
+        color: #1C1E21 !important;
+        border-radius: 8px !important;
+        border: 1px solid #CCD0D5 !important;
     }
-    .card {
-        background-color: white; padding: 20px;
-        border-radius: 10px; border-left: 5px solid #1A5D1A;
-        box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
+    
+    /* Botones de Navegación */
+    div.stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        height: 50px;
+        transition: 0.3s;
+    }
+    
+    /* Botón Principal (Verde Corporativo) */
+    .btn-main button {
+        background-color: #2E7D32 !important;
+        color: white !important;
+        border: none !important;
+        width: 100%;
+    }
+    
+    /* Contenedor de Formulario */
+    .main-card {
+        background-color: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        margin-top: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- ESTADOS DE NAVEGACIÓN ---
+# --- LÓGICA DE ESTADO ---
 if 'auth' not in st.session_state: st.session_state.auth = False
-if 'menu_principal' not in st.session_state: st.session_state.menu_principal = "INICIO"
-if 'sub_menu' not in st.session_state: st.session_state.sub_menu = None
+if 'view' not in st.session_state: st.session_state.view = "LOGIN"
 
 # --- LOGIN ---
 if not st.session_state.auth:
-    st.markdown("<h2 style='text-align: center;'>🌱 MantenTuJardin</h2>", unsafe_allow_html=True)
-    user = st.text_input("Usuario")
-    passw = st.text_input("Clave", type="password")
-    if st.button("INGRESAR"):
-        if user == "esteban" and passw == "admin123":
-            st.session_state.auth = True
-            st.rerun()
+    st.markdown("<h1 style='text-align:center; color:#2E7D32;'>MantenTuJardin</h1>", unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="main-card">', unsafe_allow_html=True)
+        user = st.text_input("Usuario")
+        pw = st.text_input("Clave", type="password")
+        if st.button("ACCEDER"):
+            if user == "esteban" and pw == "admin123":
+                st.session_state.auth = True; st.session_state.view = "MENU"; st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
 else:
     # --- MENÚ PRINCIPAL ---
-    if st.session_state.menu_principal == "INICIO":
-        st.subheader("Menú Principal")
+    if st.session_state.view == "MENU":
+        st.markdown("### Panel de Administración")
+        st.markdown('<div class="btn-main">', unsafe_allow_html=True)
+        if st.button("📍 GESTIÓN DE CLIENTES"):
+            st.session_state.view = "CLIENTES"; st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        # Tal como pediste: Solo la opción "CLIENTE" al inicio
-        if st.button("📍 CLIENTE"):
-            st.session_state.menu_principal = "CLIENTE_MENU"
-            st.rerun()
-            
         if st.button("🚪 CERRAR SESIÓN"):
-            st.session_state.auth = False
-            st.rerun()
+            st.session_state.auth = False; st.rerun()
 
-    # --- SUB-MENÚ: CLIENTE ---
-    elif st.session_state.menu_principal == "CLIENTE_MENU":
-        if st.button("⬅️ VOLVER AL INICIO"):
-            st.session_state.menu_principal = "INICIO"
-            st.session_state.sub_menu = None
-            st.rerun()
+    # --- VISTA CLIENTES ---
+    elif st.session_state.view == "CLIENTES":
+        col_back, col_title = st.columns([1, 4])
+        with col_back:
+            if st.button("⬅️"): st.session_state.view = "MENU"; st.rerun()
+        with col_title:
+            st.subheader("📍 Clientes")
+
+        tab1, tab2, tab3 = st.tabs(["➕ NUEVO", "✏️ EDITAR", "🗑️ BORRAR"])
+
+        with tab1:
+            st.markdown('<div class="main-card">', unsafe_allow_html=True)
+            st.markdown("#### Registro de Cliente")
+            nom = st.text_input("Nombre Completo")
+            dir = st.text_input("Dirección Google Maps")
+            ser = st.text_input("Servicio Contratado (Ej: Jardín + Piscina)")
             
-        st.subheader("Gestión de Clientes")
-        
-        # Opciones del menú de cliente
-        col1, col2, col3 = st.columns(3)
-        if col1.button("➕ NUEVO"): st.session_state.sub_menu = "NUEVO"
-        if col2.button("✏️ EDITAR"): st.session_state.sub_menu = "EDITAR"
-        if col3.button("🗑️ ELIMINAR"): st.session_state.sub_menu = "ELIMINAR"
-
-        st.divider()
-
-        # Formularios según la opción pinchada
-        if st.session_state.sub_menu == "NUEVO":
-            st.markdown("<div class='card'>", unsafe_allow_html=True)
-            st.write("**Registrar Nuevo Cliente**")
-            nombre = st.text_input("Nombre completo")
-            direccion = st.text_input("Dirección")
-            servicio = st.text_input("Tipo de Servicio (Ej: Jardín y Piscina)")
-            valor = st.number_input("Valor del Servicio ($)", min_value=0, step=1000)
-            tipo_plan = st.selectbox("Frecuencia", ["Visita única", "Mensual"])
+            c1, c2 = st.columns(2)
+            with c1: val = st.number_input("Valor del Servicio", min_value=0, step=5000)
+            with c2: frq = st.selectbox("Modalidad", ["Mensual", "Por Visita"])
             
+            st.markdown('<div class="btn-main">', unsafe_allow_html=True)
             if st.button("💾 GUARDAR CLIENTE"):
-                st.success(f"Cliente {nombre} registrado exitosamente.")
-            st.markdown("</div>", unsafe_allow_html=True)
+                st.success(f"Cliente {nom} registrado con éxito.")
+            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        elif st.session_state.sub_menu == "EDITAR":
-            st.write("**Modificar datos de cliente existente**")
-            cliente_sel = st.selectbox("Seleccione cliente", ["Yasna", "Francisca", "Don Jose"])
-            st.text_input("Nueva Dirección", value="Calle Falsa 123")
-            st.button("Actualizar Datos")
-
-        elif st.session_state.sub_menu == "ELIMINAR":
-            st.write("**Eliminar Cliente**")
-            st.selectbox("Seleccione cliente a eliminar", ["Yasna", "Francisca", "Don Jose"])
-            if st.button("❌ CONFIRMAR ELIMINACIÓN"):
-                st.warning("Cliente eliminado.")
+        with tab2:
+            st.write("Seleccione cliente para modificar...")
+            st.selectbox("Buscar Cliente", ["Yasna", "Francisca"])
