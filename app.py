@@ -9,6 +9,7 @@ import os
 
 ARCHIVO_CLIENTES = "clientes.xlsx"
 ARCHIVO_REGISTROS = "registros_diarios.xlsx"
+ARCHIVO_SERVICIOS = "servicios.xlsx"
 
 # Crear archivos si no existen
 if not os.path.exists(ARCHIVO_CLIENTES):
@@ -25,6 +26,11 @@ if not os.path.exists(ARCHIVO_REGISTROS):
         "valor_visita"
     ]).to_excel(ARCHIVO_REGISTROS, index=False, engine="openpyxl")
 
+if not os.path.exists(ARCHIVO_SERVICIOS):
+    pd.DataFrame(columns=["nombre_servicio", "descripcion"]).to_excel(
+        ARCHIVO_SERVICIOS, index=False, engine="openpyxl"
+    )
+
 def cargar_clientes():
     return pd.read_excel(ARCHIVO_CLIENTES, engine="openpyxl")
 
@@ -36,6 +42,12 @@ def cargar_registros():
 
 def guardar_registros(df):
     df.to_excel(ARCHIVO_REGISTROS, index=False, engine="openpyxl")
+
+def cargar_servicios():
+    return pd.read_excel(ARCHIVO_SERVICIOS, engine="openpyxl")
+
+def guardar_servicios(df):
+    df.to_excel(ARCHIVO_SERVICIOS, index=False, engine="openpyxl")
 
 # ======================================================
 # LOGIN (SE MANTIENE)
@@ -60,21 +72,19 @@ if not st.session_state["autenticado"]:
     st.stop()
 
 # ======================================================
-# MENÚ PRINCIPAL CON BOTONES (NUEVO)
+# MENÚ PRINCIPAL CON BOTONES (ACTUALIZADO)
 # ======================================================
 
 st.title("🌿 Sistema de Mantenciones")
 
-# Guardamos la opción de menú en session_state
 if "pantalla" not in st.session_state:
     st.session_state["pantalla"] = "menu"
 
-# --- BOTONES DEL MENÚ ---
 if st.session_state["pantalla"] == "menu":
 
     st.subheader("Selecciona una opción")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         if st.button("📅 Registro Diario", use_container_width=True):
@@ -86,14 +96,20 @@ if st.session_state["pantalla"] == "menu":
             st.session_state["pantalla"] = "clientes"
             st.rerun()
 
-    st.stop()  # Detiene aquí hasta elegir opción
+    with col3:
+        if st.button("🛠️ Servicios", use_container_width=True):
+            st.session_state["pantalla"] = "servicios"
+            st.rerun()
+
+    st.stop()
 
 # Cargar datos (solo después del menú)
 clientes_df = cargar_clientes()
 registros_df = cargar_registros()
+servicios_df = cargar_servicios()
 
 # ======================================================
-# 1️⃣ REGISTRO DIARIO
+# 1️⃣ REGISTRO DIARIO (AHORA USA TUS SERVICIOS)
 # ======================================================
 if st.session_state["pantalla"] == "registro":
 
@@ -111,10 +127,10 @@ if st.session_state["pantalla"] == "registro":
 
         cliente = st.selectbox("Cliente", lista_clientes)
 
-        servicio = st.selectbox(
-            "Servicio",
-            ["Mantención Jardín", "Mantención Piscina", "Ambos", "Especial"]
-        )
+        # NUEVO: servicios dinámicos
+        lista_servicios = list(servicios_df["nombre_servicio"]) if not servicios_df.empty else ["(Sin servicios)"]
+
+        servicio = st.selectbox("Servicio", lista_servicios)
 
         trabajador = st.selectbox(
             "Trabajador",
@@ -144,7 +160,7 @@ if st.session_state["pantalla"] == "registro":
     st.dataframe(registros_df.tail(10))
 
 # ======================================================
-# 2️⃣ CLIENTES (CRUD)
+# 2️⃣ CLIENTES (SIN CAMBIOS)
 # ======================================================
 elif st.session_state["pantalla"] == "clientes":
 
@@ -159,13 +175,7 @@ elif st.session_state["pantalla"] == "clientes":
         ["➕ Nuevo cliente", "✏️ Modificar cliente", "🗑️ Eliminar cliente"]
     )
 
-    # -------------------------
-    # NUEVO CLIENTE
-    # -------------------------
     if opcion == "➕ Nuevo cliente":
-
-        st.subheader("Agregar nuevo cliente")
-
         with st.form("form_cliente"):
             nombre = st.text_input("Nombre del cliente")
             direccion = st.text_input("Dirección")
@@ -182,17 +192,10 @@ elif st.session_state["pantalla"] == "clientes":
 
                 clientes_actualizados = pd.concat([clientes_df, nuevo_cliente], ignore_index=True)
                 guardar_clientes(clientes_actualizados)
-
                 st.success("Cliente agregado correctamente")
                 st.rerun()
 
-    # -------------------------
-    # MODIFICAR CLIENTE
-    # -------------------------
     elif opcion == "✏️ Modificar cliente":
-
-        st.subheader("Modificar cliente")
-
         if clientes_df.empty:
             st.warning("No hay clientes registrados")
         else:
@@ -220,13 +223,7 @@ elif st.session_state["pantalla"] == "clientes":
                     st.success("Cliente actualizado")
                     st.rerun()
 
-    # -------------------------
-    # ELIMINAR CLIENTE
-    # -------------------------
     elif opcion == "🗑️ Eliminar cliente":
-
-        st.subheader("Eliminar cliente")
-
         if clientes_df.empty:
             st.warning("No hay clientes registrados")
         else:
@@ -243,3 +240,89 @@ elif st.session_state["pantalla"] == "clientes":
 
     st.subheader("Lista actual de clientes")
     st.dataframe(clientes_df)
+
+# ======================================================
+# 3️⃣ SERVICIOS (NUEVO MÓDULO)
+# ======================================================
+elif st.session_state["pantalla"] == "servicios":
+
+    if st.button("⬅️ Volver al menú"):
+        st.session_state["pantalla"] = "menu"
+        st.rerun()
+
+    st.header("🛠️ Gestión de Servicios")
+
+    opcion = st.radio(
+        "¿Qué quieres hacer?",
+        ["➕ Nuevo servicio", "✏️ Modificar servicio", "🗑️ Eliminar servicio"]
+    )
+
+    # NUEVO SERVICIO
+    if opcion == "➕ Nuevo servicio":
+
+        with st.form("form_servicio"):
+            nombre_servicio = st.text_input("Nombre del servicio")
+            descripcion = st.text_area("Descripción del servicio")
+
+            guardar = st.form_submit_button("Guardar servicio")
+
+            if guardar:
+                nuevo_servicio = pd.DataFrame([{
+                    "nombre_servicio": nombre_servicio,
+                    "descripcion": descripcion
+                }])
+
+                servicios_actualizados = pd.concat([servicios_df, nuevo_servicio], ignore_index=True)
+                guardar_servicios(servicios_actualizados)
+
+                st.success("Servicio agregado correctamente")
+                st.rerun()
+
+    # MODIFICAR SERVICIO
+    elif opcion == "✏️ Modificar servicio":
+
+        if servicios_df.empty:
+            st.warning("No hay servicios registrados")
+        else:
+            servicio_sel = st.selectbox(
+                "Selecciona servicio",
+                servicios_df["nombre_servicio"]
+            )
+
+            fila = servicios_df[servicios_df["nombre_servicio"] == servicio_sel].iloc[0]
+
+            with st.form("form_modificar_servicio"):
+                nuevo_nombre = st.text_input("Nombre", fila["nombre_servicio"])
+                nueva_descripcion = st.text_area("Descripción", fila["descripcion"])
+
+                actualizar = st.form_submit_button("Actualizar servicio")
+
+                if actualizar:
+                    servicios_df.loc[
+                        servicios_df["nombre_servicio"] == servicio_sel,
+                        ["nombre_servicio", "descripcion"]
+                    ] = [nuevo_nombre, nueva_descripcion]
+
+                    guardar_servicios(servicios_df)
+                    st.success("Servicio actualizado")
+                    st.rerun()
+
+    # ELIMINAR SERVICIO
+    elif opcion == "🗑️ Eliminar servicio":
+
+        if servicios_df.empty:
+            st.warning("No hay servicios registrados")
+        else:
+            servicio_borrar = st.selectbox(
+                "Selecciona servicio a eliminar",
+                servicios_df["nombre_servicio"]
+            )
+
+            if st.button("Eliminar definitivamente"):
+                servicios_df = servicios_df[servicios_df["nombre_servicio"] != servicio_borrar]
+                guardar_servicios(servicios_df)
+                st.success("Servicio eliminado")
+                st.rerun()
+
+    st.subheader("Lista actual de servicios")
+    st.dataframe(servicios_df)
