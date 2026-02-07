@@ -4,56 +4,48 @@ import os
 from datetime import date
 
 # =========================
-# ARCHIVOS
+# ARCHIVOS DE DATOS
 # =========================
 
-ARCH_TRABAJADORES = "trabajadores.xlsx"
 ARCH_CLIENTES = "clientes.xlsx"
 ARCH_SERVICIOS = "servicios.xlsx"
+ARCH_TRABAJADORES = "trabajadores.xlsx"
 ARCH_REGISTROS = "registros_diarios.xlsx"
 
-# Crear archivos si no existen
-if not os.path.exists(ARCH_TRABAJADORES):
-    pd.DataFrame(columns=["usuario", "password", "nombre"]).to_excel(
-        ARCH_TRABAJADORES, index=False, engine="openpyxl"
-    )
+def crear_archivos_si_no_existen():
+    if not os.path.exists(ARCH_CLIENTES):
+        pd.DataFrame(columns=["nombre","direccion","telefono"]).to_excel(ARCH_CLIENTES, index=False)
 
-if not os.path.exists(ARCH_CLIENTES):
-    pd.DataFrame(columns=["nombre", "direccion", "telefono"]).to_excel(
-        ARCH_CLIENTES, index=False, engine="openpyxl"
-    )
+    if not os.path.exists(ARCH_SERVICIOS):
+        pd.DataFrame(columns=["servicio","descripcion"]).to_excel(ARCH_SERVICIOS, index=False)
 
-if not os.path.exists(ARCH_SERVICIOS):
-    pd.DataFrame(columns=["servicio", "descripcion"]).to_excel(
-        ARCH_SERVICIOS, index=False, engine="openpyxl"
-    )
+    if not os.path.exists(ARCH_TRABAJADORES):
+        # usuario, password, nombre, rol
+        df = pd.DataFrame([{
+            "usuario":"admin",
+            "password":"admin",
+            "nombre":"Administrador",
+            "rol":"admin"
+        }])
+        df.to_excel(ARCH_TRABAJADORES, index=False)
 
-if not os.path.exists(ARCH_REGISTROS):
-    pd.DataFrame(columns=[
-        "fecha",
-        "cliente",
-        "servicio",
-        "trabajador",
-        "valor_servicio",
-        "observaciones",
-        "quien_registro"
-    ]).to_excel(ARCH_REGISTROS, index=False, engine="openpyxl")
+    if not os.path.exists(ARCH_REGISTROS):
+        pd.DataFrame(columns=[
+            "fecha","cliente","servicio","trabajador",
+            "valor_servicio","registrado_por"
+        ]).to_excel(ARCH_REGISTROS, index=False)
+
+crear_archivos_si_no_existen()
 
 # =========================
-# FUNCIONES SEGURAS
+# FUNCIONES DE CARGA/GUARDADO
 # =========================
 
-def cargar_excel_seguro(ruta, columnas_esperadas):
-    df = pd.read_excel(ruta, engine="openpyxl")
-
-    for col in columnas_esperadas:
-        if col not in df.columns:
-            df[col] = ""
-
-    return df[columnas_esperadas]
+def cargar_excel(ruta):
+    return pd.read_excel(ruta)
 
 def guardar_excel(df, ruta):
-    df.to_excel(ruta, index=False, engine="openpyxl")
+    df.to_excel(ruta, index=False)
 
 # =========================
 # LOGIN
@@ -63,350 +55,300 @@ if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
     st.session_state["rol"] = None
     st.session_state["usuario"] = None
-    st.session_state["menu"] = None   # ahora parte sin menú seleccionado
+    st.session_state["nombre"] = None
 
-st.title("🔐 Acceso - Mantenciones Jardín & Piscina")
-
-if not st.session_state["autenticado"]:
+def login():
+    st.title("🔐 Acceso al Sistema")
 
     usuario = st.text_input("Usuario")
     password = st.text_input("Contraseña", type="password")
 
     if st.button("Ingresar"):
+        trabajadores = cargar_excel(ARCH_TRABAJADORES)
 
-        if usuario == "admin" and password == "admin123":
+        # LIMPIEZA PARA EVITAR ERRORES DE LOGIN
+        trabajadores["usuario"] = trabajadores["usuario"].astype(str).str.strip()
+        trabajadores["password"] = trabajadores["password"].astype(str).str.strip()
+        trabajadores["rol"] = trabajadores["rol"].astype(str).str.strip()
+        trabajadores["nombre"] = trabajadores["nombre"].astype(str).str.strip()
+
+        usuario = usuario.strip()
+        password = password.strip()
+
+        fila = trabajadores[
+            (trabajadores["usuario"] == usuario) &
+            (trabajadores["password"] == password)
+        ]
+
+        if len(fila) == 1:
             st.session_state["autenticado"] = True
-            st.session_state["rol"] = "admin"
-            st.session_state["usuario"] = "admin"
-            st.rerun()
-
+            st.session_state["rol"] = fila.iloc[0]["rol"]
+            st.session_state["usuario"] = usuario
+            st.session_state["nombre"] = fila.iloc[0]["nombre"]
+            st.experimental_rerun()
         else:
-            trabajadores = cargar_excel_seguro(
-                ARCH_TRABAJADORES, ["usuario", "password", "nombre"]
-            )
-
-            fila = trabajadores[
-                (trabajadores["usuario"] == usuario) &
-                (trabajadores["password"] == password)
-            ]
-
-            if not fila.empty:
-                st.session_state["autenticado"] = True
-                st.session_state["rol"] = "trabajador"
-                st.session_state["usuario"] = usuario
-                st.rerun()
-            else:
-                st.error("Usuario o contraseña incorrectos")
-
-    st.stop()
+            st.error("Usuario o contraseña incorrectos")
 
 # =========================
-# PANTALLA PRINCIPAL (MENÚ CON BOTONES GRANDES)
+# MENÚ PRINCIPAL CON BOTONES
 # =========================
 
-st.title(f"👤 Bienvenido: {st.session_state['usuario']}")
+def menu_principal():
+    st.title("📋 Menú Principal")
 
-if st.session_state["menu"] is None:
+    st.write(f"👤 Sesión iniciada como: **{st.session_state['nombre']}** ({st.session_state['rol']})")
 
-    st.markdown("## 📋 Menú Principal")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("🗓 Registro Diario"):
-            st.session_state["menu"] = "Registro Diario"
-            st.rerun()
+    st.markdown("---")
 
     if st.session_state["rol"] == "admin":
+        col1, col2 = st.columns(2)
 
+        with col1:
+            if st.button("📅 Registro Diario"):
+                st.session_state["pantalla"] = "registro"
         with col2:
             if st.button("👥 Clientes"):
-                st.session_state["menu"] = "Clientes"
-                st.rerun()
+                st.session_state["pantalla"] = "clientes"
 
         col3, col4 = st.columns(2)
 
         with col3:
-            if st.button("🛠 Servicios"):
-                st.session_state["menu"] = "Servicios"
-                st.rerun()
-
+            if st.button("🛠️ Servicios"):
+                st.session_state["pantalla"] = "servicios"
         with col4:
-            if st.button("👷 Trabajadores"):
-                st.session_state["menu"] = "Trabajadores"
-                st.rerun()
+            if st.button("🧑‍🔧 Trabajadores"):
+                st.session_state["pantalla"] = "trabajadores"
 
-    st.stop()
+    else:  # TRABAJADOR
+        if st.button("📅 Registro Diario"):
+            st.session_state["pantalla"] = "registro"
 
-# Botón para volver al menú siempre visible
-if st.button("⬅️ Volver al menú principal"):
-    st.session_state["menu"] = None
-    st.rerun()
-
-# =========================
-# CARGA DE DATOS
-# =========================
-
-clientes = cargar_excel_seguro(
-    ARCH_CLIENTES, ["nombre", "direccion", "telefono"]
-)
-
-servicios = cargar_excel_seguro(
-    ARCH_SERVICIOS, ["servicio", "descripcion"]
-)
-
-trabajadores = cargar_excel_seguro(
-    ARCH_TRABAJADORES, ["usuario", "password", "nombre"]
-)
-
-registros = cargar_excel_seguro(
-    ARCH_REGISTROS,
-    ["fecha", "cliente", "servicio", "trabajador",
-     "valor_servicio", "observaciones", "quien_registro"]
-)
+    st.markdown("---")
+    if st.button("Cerrar sesión"):
+        st.session_state.clear()
+        st.experimental_rerun()
 
 # =========================
-# 1) REGISTRO DIARIO
+# REGISTRO DIARIO
 # =========================
 
-if st.session_state["menu"] == "Registro Diario":
+def registro_diario():
+    st.header("📅 Registro Diario de Servicios")
 
-    st.header("📅 Registro Diario de Mantenciones")
+    clientes = cargar_excel(ARCH_CLIENTES)
+    servicios = cargar_excel(ARCH_SERVICIOS)
+    trabajadores = cargar_excel(ARCH_TRABAJADORES)
 
+    if clientes.empty:
+        st.warning("No hay clientes registrados aún")
+        return
+
+    if servicios.empty:
+        st.warning("No hay servicios registrados aún")
+        return
+
+    fecha = st.date_input("Fecha", date.today())
+    cliente = st.selectbox("Cliente", clientes["nombre"])
+    servicio = st.selectbox("Servicio", servicios["servicio"])
+    trabajador = st.selectbox("Trabajador", trabajadores["nombre"])
+
+    valor = None
     if st.session_state["rol"] == "admin":
+        valor = st.number_input("Valor del servicio ($)", min_value=0, step=1000)
 
-        st.subheader("➡️ Registrar servicio (cliente por cliente)")
+    if st.button("Guardar registro"):
+        registros = cargar_excel(ARCH_REGISTROS)
 
-        fecha = st.date_input("Fecha", date.today())
+        nuevo = pd.DataFrame([{
+            "fecha": fecha,
+            "cliente": cliente,
+            "servicio": servicio,
+            "trabajador": trabajador,
+            "valor_servicio": valor if st.session_state["rol"]=="admin" else "",
+            "registrado_por": st.session_state["nombre"]
+        }])
 
-        cliente = st.selectbox(
-            "Cliente",
-            clientes["nombre"].dropna().tolist()
-        )
+        registros = pd.concat([registros, nuevo], ignore_index=True)
+        guardar_excel(registros, ARCH_REGISTROS)
 
-        servicio = st.selectbox(
-            "Servicio",
-            servicios["servicio"].dropna().tolist()
-        )
-
-        trabajador = st.selectbox(
-            "Trabajador",
-            trabajadores["usuario"].dropna().tolist()
-        )
-
-        valor = st.number_input(
-            "Valor del servicio ($)",
-            min_value=0,
-            step=1000
-        )
-
-        obs = st.text_area("Observaciones (opcional)")
-
-        if st.button("Guardar registro"):
-            nuevo = pd.DataFrame([{
-                "fecha": fecha,
-                "cliente": cliente,
-                "servicio": servicio,
-                "trabajador": trabajador,
-                "valor_servicio": valor,
-                "observaciones": obs,
-                "quien_registro": "admin"
-            }])
-
-            registros = pd.concat([registros, nuevo], ignore_index=True)
-            guardar_excel(registros, ARCH_REGISTROS)
-            st.success("Registro guardado correctamente ✅")
-            st.rerun()
-
-        st.markdown("---")
-        st.subheader("📋 Historial de registros")
-        st.dataframe(
-            registros.sort_values("fecha", ascending=False)
-        )
-
-    else:
-        # Vista del trabajador
-        st.subheader("➡️ Registrar tu trabajo del día")
-
-        fecha = st.date_input("Fecha", date.today())
-
-        cliente = st.selectbox(
-            "Cliente",
-            clientes["nombre"].dropna().tolist()
-        )
-
-        servicio = st.selectbox(
-            "Servicio",
-            servicios["servicio"].dropna().tolist()
-        )
-
-        obs = st.text_area("Observaciones (opcional)")
-
-        if st.button("Enviar registro"):
-            nuevo = pd.DataFrame([{
-                "fecha": fecha,
-                "cliente": cliente,
-                "servicio": servicio,
-                "trabajador": st.session_state["usuario"],
-                "valor_servicio": "",
-                "observaciones": obs,
-                "quien_registro": st.session_state["usuario"]
-            }])
-
-            registros = pd.concat([registros, nuevo], ignore_index=True)
-            guardar_excel(registros, ARCH_REGISTROS)
-
-            st.success("Registro enviado al administrador ✅")
+        st.success("Registro guardado correctamente ✅")
 
 # =========================
-# 2) CLIENTES (SOLO ADMIN)
+# CLIENTES (SOLO ADMIN)
 # =========================
 
-if st.session_state["menu"] == "Clientes" and st.session_state["rol"] == "admin":
-
+def gestion_clientes():
     st.header("👥 Gestión de Clientes")
 
-    tab1, tab2, tab3 = st.tabs(["Agregar", "Modificar", "Eliminar"])
+    clientes = cargar_excel(ARCH_CLIENTES)
 
-    with tab1:
-        nombre = st.text_input("Nombre cliente")
+    opcion = st.radio("Selecciona acción", ["Agregar","Modificar","Eliminar"])
+
+    if opcion == "Agregar":
+        nombre = st.text_input("Nombre")
         direccion = st.text_input("Dirección")
         telefono = st.text_input("Teléfono")
 
         if st.button("Agregar cliente"):
             nuevo = pd.DataFrame([{
-                "nombre": nombre,
-                "direccion": direccion,
-                "telefono": telefono
+                "nombre": nombre.strip(),
+                "direccion": direccion.strip(),
+                "telefono": telefono.strip()
             }])
 
             clientes = pd.concat([clientes, nuevo], ignore_index=True)
             guardar_excel(clientes, ARCH_CLIENTES)
             st.success("Cliente agregado ✅")
-            st.rerun()
 
-    with tab2:
-        cliente_sel = st.selectbox("Selecciona cliente", clientes["nombre"])
+    elif opcion == "Modificar":
+        sel = st.selectbox("Cliente", clientes["nombre"])
+        fila = clientes[clientes["nombre"] == sel].iloc[0]
 
-        nueva_dir = st.text_input("Nueva dirección")
-        nuevo_tel = st.text_input("Nuevo teléfono")
+        nuevo_nombre = st.text_input("Nombre", fila["nombre"])
+        nueva_dir = st.text_input("Dirección", fila["direccion"])
+        nuevo_tel = st.text_input("Teléfono", fila["telefono"])
 
-        if st.button("Modificar cliente"):
-            clientes.loc[
-                clientes["nombre"] == cliente_sel, "direccion"
-            ] = nueva_dir
-
-            clientes.loc[
-                clientes["nombre"] == cliente_sel, "telefono"
-            ] = nuevo_tel
-
+        if st.button("Guardar cambios"):
+            clientes.loc[clientes["nombre"]==sel, ["nombre","direccion","telefono"]] = [
+                nuevo_nombre, nueva_dir, nuevo_tel
+            ]
             guardar_excel(clientes, ARCH_CLIENTES)
             st.success("Cliente modificado ✅")
-            st.rerun()
 
-    with tab3:
-        cliente_del = st.selectbox("Cliente a eliminar", clientes["nombre"])
-
+    else: # Eliminar
+        sel = st.selectbox("Cliente", clientes["nombre"])
         if st.button("Eliminar cliente"):
-            clientes = clientes[clientes["nombre"] != cliente_del]
+            clientes = clientes[clientes["nombre"] != sel]
             guardar_excel(clientes, ARCH_CLIENTES)
             st.success("Cliente eliminado ❌")
-            st.rerun()
 
 # =========================
-# 3) SERVICIOS (SOLO ADMIN)
+# SERVICIOS (SOLO ADMIN)
 # =========================
 
-if st.session_state["menu"] == "Servicios" and st.session_state["rol"] == "admin":
+def gestion_servicios():
+    st.header("🛠️ Gestión de Servicios")
 
-    st.header("🛠 Gestión de Servicios")
+    servicios = cargar_excel(ARCH_SERVICIOS)
 
-    tab1, tab2, tab3 = st.tabs(["Agregar", "Modificar", "Eliminar"])
+    opcion = st.radio("Selecciona acción", ["Agregar","Modificar","Eliminar"])
 
-    with tab1:
-        servicio = st.text_input("Nombre del servicio")
+    if opcion == "Agregar":
+        nombre = st.text_input("Nombre del servicio")
         descripcion = st.text_area("Descripción")
 
         if st.button("Agregar servicio"):
             nuevo = pd.DataFrame([{
-                "servicio": servicio,
-                "descripcion": descripcion
+                "servicio": nombre.strip(),
+                "descripcion": descripcion.strip()
             }])
-
             servicios = pd.concat([servicios, nuevo], ignore_index=True)
             guardar_excel(servicios, ARCH_SERVICIOS)
             st.success("Servicio agregado ✅")
-            st.rerun()
 
-    with tab2:
-        serv_sel = st.selectbox("Selecciona servicio", servicios["servicio"])
-        nueva_desc = st.text_area("Nueva descripción")
+    elif opcion == "Modificar":
+        sel = st.selectbox("Servicio", servicios["servicio"])
+        fila = servicios[servicios["servicio"]==sel].iloc[0]
 
-        if st.button("Modificar servicio"):
-            servicios.loc[
-                servicios["servicio"] == serv_sel, "descripcion"
-            ] = nueva_desc
+        nuevo_nombre = st.text_input("Nombre", fila["servicio"])
+        nueva_desc = st.text_area("Descripción", fila["descripcion"])
 
+        if st.button("Guardar cambios"):
+            servicios.loc[servicios["servicio"]==sel, ["servicio","descripcion"]] = [
+                nuevo_nombre, nueva_desc
+            ]
             guardar_excel(servicios, ARCH_SERVICIOS)
             st.success("Servicio modificado ✅")
-            st.rerun()
 
-    with tab3:
-        serv_del = st.selectbox("Servicio a eliminar", servicios["servicio"])
-
+    else:
+        sel = st.selectbox("Servicio", servicios["servicio"])
         if st.button("Eliminar servicio"):
-            servicios = servicios[servicios["servicio"] != serv_del]
+            servicios = servicios[servicios["servicio"] != sel]
             guardar_excel(servicios, ARCH_SERVICIOS)
             st.success("Servicio eliminado ❌")
-            st.rerun()
 
 # =========================
-# 4) TRABAJADORES (SOLO ADMIN)
+# TRABAJADORES (SOLO ADMIN)
 # =========================
 
-if st.session_state["menu"] == "Trabajadores" and st.session_state["rol"] == "admin":
+def gestion_trabajadores():
+    st.header("🧑‍🔧 Gestión de Trabajadores")
 
-    st.header("👷 Gestión de Trabajadores")
+    trabajadores = cargar_excel(ARCH_TRABAJADORES)
 
-    tab1, tab2, tab3 = st.tabs(["Agregar", "Modificar", "Eliminar"])
+    opcion = st.radio("Selecciona acción", ["Agregar","Modificar","Eliminar"])
 
-    with tab1:
-        nombre = st.text_input("Nombre trabajador")
+    if opcion == "Agregar":
+        nombre = st.text_input("Nombre completo")
         usuario = st.text_input("Usuario")
         password = st.text_input("Contraseña", type="password")
 
         if st.button("Agregar trabajador"):
             nuevo = pd.DataFrame([{
-                "usuario": usuario,
-                "password": password,
-                "nombre": nombre
+                "usuario": usuario.strip(),
+                "password": password.strip(),
+                "nombre": nombre.strip(),
+                "rol": "trabajador"
             }])
-
             trabajadores = pd.concat([trabajadores, nuevo], ignore_index=True)
             guardar_excel(trabajadores, ARCH_TRABAJADORES)
-            st.success("Trabajador agregado ✅")
-            st.rerun()
+            st.success(f"Trabajador creado ✅\nUsuario: {usuario}\nContraseña: {password}")
 
-    with tab2:
-        trab_sel = st.selectbox("Selecciona trabajador", trabajadores["usuario"])
-        nueva_pass = st.text_input("Nueva contraseña", type="password")
+    elif opcion == "Modificar":
+        sel = st.selectbox("Trabajador", trabajadores["nombre"])
+        fila = trabajadores[trabajadores["nombre"]==sel].iloc[0]
 
-        if st.button("Modificar contraseña"):
-            trabajadores.loc[
-                trabajadores["usuario"] == trab_sel, "password"
-            ] = nueva_pass
+        nuevo_nombre = st.text_input("Nombre", fila["nombre"])
+        nuevo_usuario = st.text_input("Usuario", fila["usuario"])
+        nueva_pass = st.text_input("Nueva contraseña", value=fila["password"])
 
-            guardar_excel(trabajadores, ARCH_TRABAJADORES)
-            st.success("Contraseña actualizada ✅")
-            st.rerun()
-
-    with tab3:
-        trab_del = st.selectbox("Trabajador a eliminar", trabajadores["usuario"])
-
-        if st.button("Eliminar trabajador"):
-            trabajadores = trabajadores[
-                trabajadores["usuario"] != trab_del
+        if st.button("Guardar cambios"):
+            trabajadores.loc[trabajadores["nombre"]==sel, ["nombre","usuario","password"]] = [
+                nuevo_nombre, nuevo_usuario, nueva_pass
             ]
             guardar_excel(trabajadores, ARCH_TRABAJADORES)
+            st.success("Trabajador modificado ✅")
+
+    else:
+        sel = st.selectbox("Trabajador", trabajadores["nombre"])
+        if st.button("Eliminar trabajador"):
+            trabajadores = trabajadores[trabajadores["nombre"] != sel]
+            guardar_excel(trabajadores, ARCH_TRABAJADORES)
             st.success("Trabajador eliminado ❌")
-            st.rerun()
+
+# =========================
+# CONTROL DE PANTALLAS
+# =========================
+
+if not st.session_state["autenticado"]:
+    login()
+else:
+    if "pantalla" not in st.session_state:
+        st.session_state["pantalla"] = "menu"
+
+    if st.session_state["pantalla"] == "menu":
+        menu_principal()
+
+    elif st.session_state["pantalla"] == "registro":
+        registro_diario()
+        if st.button("⬅️ Volver al menú"):
+            st.session_state["pantalla"] = "menu"
+            st.experimental_rerun()
+
+    elif st.session_state["pantalla"] == "clientes":
+        gestion_clientes()
+        if st.button("⬅️ Volver al menú"):
+            st.session_state["pantalla"] = "menu"
+            st.experimental_rerun()
+
+    elif st.session_state["pantalla"] == "servicios":
+        gestion_servicios()
+        if st.button("⬅️ Volver al menú"):
+            st.session_state["pantalla"] = "menu"
+            st.experimental_rerun()
+
+    elif st.session_state["pantalla"] == "trabajadores":
+        gestion_trabajadores()
+        if st.button("⬅️ Volver al menú"):
+            st.session_state["pantalla"] = "menu"
+            st.experimental_rerun()
