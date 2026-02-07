@@ -2,97 +2,114 @@ import streamlit as st
 import time
 from datetime import datetime
 
-# 1. CONFIGURACIÓN
-st.set_page_config(page_title="MantenTuJardin Operaciones", layout="centered")
+# 1. CONFIGURACIÓN DE SEGURIDAD Y PÁGINA
+st.set_page_config(page_title="MantenTuJardin Pro", layout="centered")
 
-# 2. CSS PROFESIONAL (Basado en tu logo y feedback de colores)
+# 2. CSS PROFESIONAL (ALTO CONTRASTE)
 st.markdown("""
     <style>
     .stApp { background-color: #F8F9FA; }
-    /* Etiquetas en negro puro para lectura clara */
-    label, p, .stMarkdown { color: #000000 !important; font-weight: 700 !important; }
-    
-    /* Inputs con bordes verdes definidos */
-    .stTextInput input, .stNumberInput input, .stSelectbox div, .stTextArea textarea {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        border: 2px solid #2E7D32 !important;
+    label, p, span, .stMarkdown { color: #000000 !important; font-weight: 700 !important; }
+    .stTextInput input, .stNumberInput input, .stSelectbox div {
+        background-color: #FFFFFF !important; color: #000000 !important;
+        border: 2px solid #2E7D32 !important; border-radius: 8px !important;
     }
-    
-    /* Botones de acción principal */
     div.stButton > button {
-        background-color: #2E7D32 !important;
-        color: #FFFFFF !important;
-        height: 60px !important;
-        font-size: 18px !important;
-        border-radius: 10px;
+        background-color: #2E7D32 !important; color: #FFFFFF !important;
+        height: 60px !important; width: 100% !important;
+        font-size: 18px !important; font-weight: bold !important;
+        border-radius: 12px !important; margin-bottom: 10px;
     }
-    /* Botón Volver */
-    .btn-volver button {
-        background-color: #6c757d !important;
-        height: 40px !important;
-    }
+    .btn-volver button { background-color: #6C757D !important; height: 45px !important; }
+    .main-card { background-color: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LÓGICA DE NAVEGACIÓN ---
+# --- 3. GESTIÓN DE SESIÓN Y LOGIN ---
+if 'auth' not in st.session_state: st.session_state.auth = False
+if 'rol' not in st.session_state: st.session_state.rol = None
 if 'view' not in st.session_state: st.session_state.view = "MENU"
 
-# --- MENÚ PRINCIPAL ---
-if st.session_state.view == "MENU":
+def login():
     st.markdown("<h1 style='text-align:center; color:#2E7D32;'>🌱 MantenTuJardin</h1>", unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📍 CLIENTES"): st.session_state.view = "CLIENTES"; st.rerun()
-    with col2:
-        if st.button("🛠️ REGISTRO DIARIO"): st.session_state.view = "REGISTRO"; st.rerun()
-
-# --- VISTA: REGISTRO DIARIO (UN CLIENTE A LA VEZ) ---
-elif st.session_state.view == "REGISTRO":
-    st.markdown("<div class='btn-volver'>", unsafe_allow_html=True)
-    if st.button("⬅️ VOLVER"): st.session_state.view = "MENU"; st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.header("📝 Registro de Servicio Diario")
-    st.info("Ingresa los datos del servicio realizado para que quede en la bitácora mensual.")
-
     with st.container():
-        # 1. Datos de Identificación
-        fecha = st.date_input("Fecha del Servicio", datetime.now())
+        st.markdown('<div class="main-card">', unsafe_allow_html=True)
+        user = st.text_input("Usuario / Email").lower().strip()
+        pw = st.text_input("Contraseña", type="password")
         
-        col_t, col_c = st.columns(2)
-        with col_t:
-            # Esto vendrá de tu lista de trabajadores
-            trabajador = st.selectbox("Trabajador asignado", ["Juan Perez", "Luis Soto", "Esteban (Admin)"])
-        with col_c:
-            # Esto vendrá de tu lista de clientes
-            cliente = st.selectbox("Cliente atendido", ["Yasna", "Francisca", "Don Jose", "Empresa X"])
-
-        # 2. Detalle del Trabajo
-        servicio_tipo = st.multiselect("Servicios realizados", 
-                                       ["Corte de Pasto", "Limpieza Piscina", "Poda", "Fumigación", "Riego"])
-        
-        descripcion = st.text_area("Notas específicas del día", placeholder="Ej: Se aplicó cloro adicional a la piscina...")
-
-        # 3. Valorización
-        monto_pago = st.number_input("Monto a pagar al trabajador por este servicio ($)", min_value=0, step=1000)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        if st.button("✅ GUARDAR Y REGISTRAR SIGUIENTE"):
-            if cliente and trabajador:
-                # Aquí simulamos el guardado
-                st.success(f"¡Registrado! El servicio de {trabajador} para {cliente} se guardó correctamente.")
-                time.sleep(1.5)
-                # Volvemos al menú para decidir si registrar otro o ir a clientes
-                st.session_state.view = "MENU"
+        if st.button("ACCEDER AL SISTEMA"):
+            # Lógica de acceso segura
+            if user == "esteban" and pw == "admin123":
+                st.session_state.auth, st.session_state.rol = True, "ADMIN"
+                st.rerun()
+            elif user == "trabajador" and pw == "jardin2026":
+                st.session_state.auth, st.session_state.rol = True, "TRABAJADOR"
                 st.rerun()
             else:
-                st.error("Por favor completa los campos obligatorios.")
+                st.error("Credenciales incorrectas")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# --- VISTA: CLIENTES (Mantenemos tu diseño funcional) ---
-elif st.session_state.view == "CLIENTES":
-    if st.button("⬅️ VOLVER AL MENÚ"): st.session_state.view = "MENU"; st.rerun()
-    st.subheader("📍 Gestión de Clientes")
-    # (Aquí va el código de Nuevo/Editar/Eliminar que ya aprobaste)
+# --- 4. APLICACIÓN PROTEGIDA ---
+if not st.session_state.auth:
+    login()
+else:
+    # BOTÓN SALIR (Siempre visible arriba a la derecha)
+    col_user, col_out = st.columns([3, 1])
+    col_user.write(f"👤 **{st.session_state.rol}**")
+    if col_out.button("SALIR"):
+        st.session_state.auth = False
+        st.rerun()
+
+    # --- NAVEGACIÓN SEGÚN ROL ---
+    if st.session_state.view == "MENU":
+        st.subheader("Panel de Operaciones")
+        
+        if st.session_state.rol == "ADMIN":
+            if st.button("📍 GESTIÓN DE CLIENTES"): st.session_state.view = "CLIENTES"; st.rerun()
+            if st.button("🛠️ REGISTRO DIARIO (BITÁCORA)"): st.session_state.view = "REGISTRO"; st.rerun()
+            if st.button("📊 CIERRE DE MES"): st.session_state.view = "CIERRE"; st.rerun()
+        else:
+            # Vista limitada para el trabajador
+            if st.button("📝 REGISTRAR MI TRABAJO"): st.session_state.view = "REGISTRO"; st.rerun()
+
+    # --- SECCIÓN: CLIENTES (SOLO ADMIN) ---
+    elif st.session_state.view == "CLIENTES" and st.session_state.rol == "ADMIN":
+        if st.button("⬅️ VOLVER"): st.session_state.view = "MENU"; st.rerun()
+        
+        tab1, tab2, tab3 = st.tabs(["➕ NUEVO", "✏️ EDITAR", "🗑️ BORRAR"])
+        
+        with tab1:
+            st.markdown('<div class="main-card">', unsafe_allow_html=True)
+            nom = st.text_input("Nombre del Cliente")
+            dir = st.text_input("Dirección")
+            ser = st.text_input("Servicio Contratado")
+            val = st.number_input("Valor Servicio ($)", min_value=0, step=1000)
+            fre = st.selectbox("Frecuencia", ["Mensual", "Por Visita"])
+            if st.button("💾 GUARDAR CLIENTE"):
+                st.success(f"Cliente {nom} guardado.")
+                time.sleep(1.2); st.session_state.view = "MENU"; st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- SECCIÓN: REGISTRO DIARIO (AMBOS ROLES) ---
+    elif st.session_state.view == "REGISTRO":
+        if st.button("⬅️ VOLVER"): st.session_state.view = "MENU"; st.rerun()
+        
+        st.markdown('<div class="main-card">', unsafe_allow_html=True)
+        st.markdown("### Registro de Actividad")
+        st.date_input("Fecha", datetime.now())
+        
+        if st.session_state.rol == "ADMIN":
+            trab = st.selectbox("Trabajador", ["Juan Perez", "Luis Soto"])
+        else:
+            st.write(f"Trabajador: **{st.session_state.rol}**")
+            
+        clie = st.selectbox("Cliente Atendido", ["Yasna", "Francisca", "Don Jose"])
+        task = st.multiselect("Tareas", ["Pasto", "Piscina", "Poda", "Otros"])
+        
+        if st.session_state.rol == "ADMIN":
+            pago = st.number_input("Pago asignado por este servicio ($)", min_value=0)
+            
+        if st.button("✅ FINALIZAR REGISTRO"):
+            st.success("Información enviada con éxito.")
+            time.sleep(1.2); st.session_state.view = "MENU"; st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
