@@ -3,12 +3,13 @@ import pandas as pd
 from datetime import date
 import os
 
-# =========================
-# CONFIGURACIÓN INICIAL
-# =========================
+# ======================================================
+# CONFIGURACIÓN INICIAL DEL ARCHIVO
+# ======================================================
 
 ARCHIVO = "registros_mantencion.xlsx"
 
+# Si el archivo no existe, se crea con las columnas base
 if not os.path.exists(ARCHIVO):
     df_init = pd.DataFrame(columns=[
         "fecha",
@@ -26,9 +27,9 @@ def cargar_datos():
 def guardar_datos(df):
     df.to_excel(ARCHIVO, index=False, engine="openpyxl")
 
-# =========================
-# SISTEMA DE LOGIN SIMPLE
-# =========================
+# ======================================================
+# SISTEMA DE LOGIN (VERSIÓN FUNCIONAL Y ACTUAL)
+# ======================================================
 
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
@@ -42,15 +43,15 @@ if not st.session_state["autenticado"]:
     if st.button("Ingresar"):
         if usuario == "admin" and password == "1234":
             st.session_state["autenticado"] = True
-            st.experimental_rerun()
+            st.rerun()   # ✅ función correcta en Streamlit actual
         else:
             st.error("Usuario o contraseña incorrectos")
 
-    st.stop()  # Detiene la app hasta que inicies sesión
+    st.stop()  # Detiene la app hasta que se loguee
 
-# =========================
-# APP PRINCIPAL
-# =========================
+# ======================================================
+# APP PRINCIPAL (SOLO SI ESTÁ LOGUEADO)
+# ======================================================
 
 st.title("🌿 Mantenciones - Jardín & Piscina")
 
@@ -61,20 +62,21 @@ menu = st.sidebar.selectbox(
 
 df = cargar_datos()
 
-# -----------------------------
-# NUEVA MANTENCIÓN (MÓVIL FRIENDLY)
-# -----------------------------
+# ------------------------------------------------------
+# PESTAÑA 1: NUEVA MANTENCIÓN (MÓVIL FRIENDLY)
+# ------------------------------------------------------
 if menu == "Nueva Mantención":
 
     st.header("📌 Nueva Mantención")
 
     with st.form("form_mantencion"):
 
-        # Columnas para que se vea mejor en celular
+        # Dos columnas para que se vea mejor en celular
         col1, col2 = st.columns(2)
 
         with col1:
             fecha = st.date_input("Fecha", date.today())
+
             cliente = st.selectbox(
                 "Cliente",
                 [
@@ -121,29 +123,36 @@ if menu == "Nueva Mantención":
 
             st.success("✅ Registro guardado correctamente!")
 
-# -----------------------------
-# HISTORIAL
-# -----------------------------
+# ------------------------------------------------------
+# PESTAÑA 2: HISTORIAL
+# ------------------------------------------------------
 elif menu == "Historial":
     st.header("📋 Historial de Mantenciones")
 
-    cliente_filtro = st.selectbox(
-        "Filtrar por cliente",
-        ["Todos"] + list(df["cliente"].unique())
-    )
+    if df.empty:
+        st.info("Aún no hay registros guardados.")
+    else:
+        cliente_filtro = st.selectbox(
+            "Filtrar por cliente",
+            ["Todos"] + list(df["cliente"].unique())
+        )
 
-    if cliente_filtro != "Todos":
-        df = df[df["cliente"] == cliente_filtro]
+        df_mostrar = df.copy()
 
-    st.dataframe(df)
+        if cliente_filtro != "Todos":
+            df_mostrar = df_mostrar[df_mostrar["cliente"] == cliente_filtro]
 
-# -----------------------------
-# RESUMEN MENSUAL
-# -----------------------------
+        st.dataframe(df_mostrar)
+
+# ------------------------------------------------------
+# PESTAÑA 3: RESUMEN MENSUAL
+# ------------------------------------------------------
 elif menu == "Resumen Mensual":
     st.header("📊 Resumen Mensual")
 
-    if not df.empty:
+    if df.empty:
+        st.info("No hay datos para mostrar resumen.")
+    else:
         df["mes"] = pd.to_datetime(df["fecha"]).dt.to_period("M")
 
         mes_seleccionado = st.selectbox(
