@@ -2,143 +2,104 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# Configuración de la página
-st.set_page_config(page_title="MantenTuJardin Pro", layout="wide", page_icon="🌱")
+# Configuración básica
+st.set_page_config(page_title="MantenTuJardin", layout="centered")
 
-# --- 1. ESTILO Y LOGO ---
-def mostrar_logo():
-    try:
-        st.sidebar.image("logo.jpg", use_container_width=True)
-    except:
-        st.sidebar.title("🌱 MantenTuJardin")
+# Estilo para botones gigantes y estética móvil
+st.markdown("""
+    <style>
+    .stButton button {
+        width: 100%;
+        height: 80px;
+        font-size: 20px;
+        border-radius: 15px;
+        margin-bottom: 10px;
+    }
+    .volver-btn button {
+        height: 40px;
+        background-color: #f0f2f6;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# --- 2. SISTEMA DE AUTENTICACIÓN ---
+# --- 1. LOGO Y SESIÓN ---
+try:
+    st.image("logo.jpg", width=200)
+except:
+    st.title("🌱 MantenTuJardin")
+
 if 'autenticado' not in st.session_state:
     st.session_state.autenticado = False
-    st.session_state.rol = None
-    st.session_state.usuario = None
+if 'menu_actual' not in st.session_state:
+    st.session_state.menu_actual = "Inicio"
 
-def login():
-    st.title("Bienvenido a MantenTuJardin")
-    st.subheader("Sistema de Gestión Operativa")
-    
-    with st.container():
-        col1, col2, col3 = st.columns([1,2,1])
-        with col2:
-            with st.form("login_form"):
-                user = st.text_input("Usuario (Correo)")
-                password = st.text_input("Contraseña", type="password")
-                submit = st.form_submit_button("Iniciar Sesión")
-                
-                if submit:
-                    # Lógica de acceso (Temporal hasta conectar Base de Datos)
-                    if user == "esteban" and password == "admin123":
-                        st.session_state.autenticado = True
-                        st.session_state.rol = "admin"
-                        st.session_state.usuario = "Esteban"
-                        st.rerun()
-                    elif user == "trabajador" and password == "jardin2026":
-                        st.session_state.autenticado = True
-                        st.session_state.rol = "trabajador"
-                        st.session_state.usuario = "Operario"
-                        st.rerun()
-                    else:
-                        st.error("Credenciales incorrectas. Verifica tu usuario y clave.")
-
-# --- 3. INTERFAZ PRINCIPAL ---
+# --- 2. LOGIN ---
 if not st.session_state.autenticado:
-    login()
+    user = st.text_input("Usuario").lower()
+    password = st.text_input("Clave", type="password")
+    if st.button("INICIAR SESIÓN"):
+        if user == "esteban" and password == "admin123":
+            st.session_state.autenticado, st.session_state.rol = True, "admin"
+            st.rerun()
+        elif user == "trabajador" and password == "jardin2026":
+            st.session_state.autenticado, st.session_state.rol = True, "trabajador"
+            st.rerun()
+        else:
+            st.error("Datos incorrectos")
+
+# --- 3. MENÚ PRINCIPAL (BOTONERA) ---
 else:
-    mostrar_logo()
-    st.sidebar.write(f"👤 **Usuario:** {st.session_state.usuario}")
-    st.sidebar.write(f"🛡️ **Rol:** {st.session_state.rol.capitalize()}")
-    st.sidebar.divider()
+    if st.session_state.menu_actual == "Inicio":
+        st.subheader(f"Hola, {st.session_state.usuario if 'usuario' in st.session_state else 'Bienvenido'}")
+        
+        # Botones según Rol
+        if st.session_state.rol == "admin":
+            if st.button("📍 CLIENTES"): st.session_state.menu_actual = "Clientes"; st.rerun()
+            if st.button("🛠️ NUEVO SERVICIO"): st.session_state.menu_actual = "Servicio"; st.rerun()
+            if st.button("📊 CIERRE DE MES"): st.session_state.menu_actual = "Cierre"; st.rerun()
+            if st.button("👥 EQUIPO"): st.session_state.menu_actual = "Equipo"; st.rerun()
+        else:
+            if st.button("🛠️ REGISTRAR TRABAJO"): st.session_state.menu_actual = "Servicio"; st.rerun()
+            if st.button("📅 MIS TRABAJOS"): st.session_state.menu_actual = "MisTrabajos"; st.rerun()
+        
+        st.divider()
+        if st.button("SALIR"):
+            st.session_state.autenticado = False
+            st.rerun()
 
-    # NAVEGACIÓN SEGÚN ROL
-    if st.session_state.rol == "admin":
-        menu = st.sidebar.radio("NAVEGACIÓN", [
-            "🏠 Dashboard", 
-            "👥 Trabajadores", 
-            "📍 Clientes", 
-            "🛠️ Servicios", 
-            "📊 Cierre de Mes"
-        ])
+    # --- 4. SECCIONES (CRUD) ---
     else:
-        menu = st.sidebar.radio("NAVEGACIÓN", ["📝 Registrar Servicio", "📅 Mis Servicios"])
+        # Botón para volver siempre arriba
+        if st.button("⬅️ VOLVER AL MENÚ"):
+            st.session_state.menu_actual = "Inicio"
+            st.rerun()
 
-    if st.sidebar.button("Cerrar Sesión"):
-        st.session_state.autenticado = False
-        st.rerun()
+        if st.session_state.menu_actual == "Clientes":
+            st.header("📍 Clientes")
+            opc = st.radio("Acción", ["Ver Lista", "Nuevo", "Modificar", "Eliminar"], horizontal=True)
+            if opc == "Nuevo":
+                st.text_input("Nombre Cliente")
+                st.text_input("Dirección")
+                st.button("GUARDAR CLIENTE")
+            else:
+                st.write("Lista de clientes aparecerá aquí.")
 
-    # --- LÓGICA DE SECCIONES ---
+        elif st.session_state.menu_actual == "Servicio":
+            st.header("🛠️ Registro Diario")
+            with st.form("registro"):
+                st.date_input("Fecha", datetime.now())
+                st.selectbox("Cliente", ["Yasna", "Francisca", "Don Jose"])
+                st.multiselect("Trabajo", ["Césped", "Piscina", "Poda", "Riego"])
+                st.text_area("Notas")
+                if st.form_submit_button("REGISTRAR"):
+                    st.success("¡Registrado!")
 
-    if menu == "🏠 Dashboard":
-        st.title("📊 Resumen del Negocio")
-        st.write(f"Hoy es: {datetime.now().strftime('%A, %d de %B de %Y')}")
-        
-        # Simulación de métricas
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Servicios Hoy", "4")
-        col2.metric("Clientes Activos", "12")
-        col3.metric("Pagos Pendientes", "$120.000")
+        elif st.session_state.menu_actual == "Cierre":
+            st.header("📊 Cierre Mensual")
+            st.selectbox("Mes", ["Enero", "Febrero", "Marzo"])
+            st.button("📥 EXPORTAR EXCEL")
 
-    elif menu == "👥 Trabajadores":
-        st.title("Gestionar Equipo")
-        tab1, tab2 = st.tabs(["Lista de Trabajadores", "Registrar Nuevo"])
-        
-        with tab1:
-            st.write("Aquí podrás ver el rendimiento de tu equipo.")
-            # Simulación de tabla
-            df_t = pd.DataFrame({'Nombre': ['Juan Perez', 'Luis Soto'], 'Correo': ['juan@mail.com', 'luis@mail.com'], 'Estado': ['Activo', 'Activo']})
-            st.table(df_t)
-            
-        with tab2:
-            with st.form("nuevo_t"):
-                st.text_input("Nombre Completo")
-                st.text_input("Correo Electrónico")
-                st.text_input("Contraseña Provisoria")
-                if st.form_submit_button("Crear Trabajador"):
-                    st.success("Trabajador registrado exitosamente.")
-
-    elif menu == "📍 Clientes":
-        st.title("Cartera de Clientes")
-        acc = st.selectbox("¿Qué deseas hacer?", ["Ver Clientes", "Nuevo Cliente", "Modificar Cliente", "Eliminar Cliente"])
-        
-        if acc == "Nuevo Cliente":
-            with st.form("form_cliente"):
-                st.text_input("Nombre del Cliente (Ej: Yasna)")
-                st.text_input("Dirección del Servicio")
-                st.text_input("Teléfono de Contacto")
-                if st.form_submit_button("Guardar"):
-                    st.success("Cliente añadido a la base de datos.")
-
-    elif menu == "🛠️ Servicios" or menu == "📝 Registrar Servicio":
-        st.title("Registro Diario de Servicios")
-        st.info("Registra aquí los trabajos realizados hoy.")
-        
-        with st.form("form_servicio"):
-            fecha = st.date_input("Fecha", datetime.now())
-            cliente = st.selectbox("Seleccionar Cliente", ["Yasna", "Francisca", "Jose Manuel"])
-            tareas = st.multiselect("Trabajos realizados", ["Corte de Césped", "Limpieza de Piscina", "Poda", "Fumigación", "Riego"])
-            comentario = st.text_area("Notas adicionales (opcional)")
-            
-            if st.form_submit_button("Guardar Registro"):
-                st.success(f"Servicio para {cliente} registrado correctamente el día {fecha}.")
-                # Aquí guardaremos el log para el Excel final
-
-    elif menu == "📊 Cierre de Mes":
-        st.title("Exportación y Pagos")
-        st.write("Genera el reporte para pagar a tus trabajadores y enviar boletas.")
-        
-        mes = st.selectbox("Seleccionar Mes", ["Enero", "Febrero", "Marzo", "Abril"])
-        
-        if st.button("📥 Generar y Descargar Excel"):
-            # Lógica para crear el Excel (Simulada)
-            st.balloons()
-            st.success(f"Reporte de {mes} generado con éxito.")
-            st.download_button(label="Descargar Archivo", data="Contenido del excel", file_name=f"Reporte_{mes}.csv")
-
-    elif menu == "📅 Mis Servicios":
-        st.title("Mi Historial")
-        st.write("Servicios realizados por ti este mes:")
-        # Aquí se mostraría una tabla filtrada por el usuario logueado
+        elif st.session_state.menu_actual == "Equipo":
+            st.header("👥 Trabajadores")
+            st.write("Configuración de operarios.")
+            st.button("AÑADIR TRABAJADOR")
