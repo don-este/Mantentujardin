@@ -9,7 +9,6 @@ from datetime import date
 
 ARCH_TRABAJADORES = "trabajadores.xlsx"
 ARCH_CLIENTES = "clientes.xlsx"
-ARCH_SERVICIOS = "servicios.xlsx"
 ARCH_REGISTROS = "registros_diarios.xlsx"
 
 # Crear archivos si no existen
@@ -335,3 +334,4 @@ if st.session_state["menu"] == "Trabajadores" and st.session_state["rol"] == "ad
             guardar_excel(trabajadores, ARCH_TRABAJADORES)
             st.success("Trabajador eliminado ❌")
             st.rerun()
+
