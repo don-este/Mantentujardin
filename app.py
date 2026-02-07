@@ -4,7 +4,7 @@ import os
 from datetime import date
 
 # =========================
-# ARCHIVOS DE DATOS
+# ARCHIVOS
 # =========================
 
 ARCH_TRABAJADORES = "trabajadores.xlsx"
@@ -31,15 +31,16 @@ if not os.path.exists(ARCH_SERVICIOS):
 if not os.path.exists(ARCH_REGISTROS):
     pd.DataFrame(columns=[
         "fecha",
-        "trabajador",
         "cliente",
         "servicio",
+        "trabajador",
+        "valor_servicio",
         "observaciones",
-        "monto_pago"
+        "quien_registro"
     ]).to_excel(ARCH_REGISTROS, index=False, engine="openpyxl")
 
 # =========================
-# FUNCIONES AUXILIARES
+# FUNCIONES
 # =========================
 
 def cargar_excel(ruta):
@@ -66,7 +67,7 @@ if not st.session_state["autenticado"]:
 
     if st.button("Ingresar"):
 
-        # 1) Ver si es ADMIN
+        # ADMIN
         if usuario == "admin" and password == "admin123":
             st.session_state["autenticado"] = True
             st.session_state["rol"] = "admin"
@@ -74,7 +75,7 @@ if not st.session_state["autenticado"]:
             st.rerun()
 
         else:
-            # 2) Ver si es TRABAJADOR
+            # TRABAJADOR
             trabajadores = cargar_excel(ARCH_TRABAJADORES)
 
             fila = trabajadores[
@@ -93,93 +94,109 @@ if not st.session_state["autenticado"]:
     st.stop()
 
 # =========================
-# MENÚ PRINCIPAL
+# MENÚ CON BOTONES
 # =========================
 
 st.sidebar.title(f"👤 Sesión: {st.session_state['usuario']}")
 
+st.sidebar.markdown("## 📋 Menú")
+
 if st.session_state["rol"] == "admin":
-    opcion = st.sidebar.radio(
-        "Menú",
-        ["Registro Diario", "Clientes", "Servicios", "Trabajadores"]
-    )
+    btn_registro = st.sidebar.button("🗓 Registro Diario")
+    btn_clientes = st.sidebar.button("👥 Clientes")
+    btn_servicios = st.sidebar.button("🛠 Servicios")
+    btn_trabajadores = st.sidebar.button("👷 Trabajadores")
 else:
-    opcion = st.sidebar.radio(
-        "Menú",
-        ["Registro Diario"]
-    )
+    btn_registro = st.sidebar.button("🗓 Registro Diario")
+
+# Guardar opción seleccionada
+if "menu" not in st.session_state:
+    st.session_state["menu"] = "Registro Diario"
+
+if btn_registro:
+    st.session_state["menu"] = "Registro Diario"
+if st.session_state["rol"] == "admin" and btn_clientes:
+    st.session_state["menu"] = "Clientes"
+if st.session_state["rol"] == "admin" and btn_servicios:
+    st.session_state["menu"] = "Servicios"
+if st.session_state["rol"] == "admin" and btn_trabajadores:
+    st.session_state["menu"] = "Trabajadores"
 
 # =========================
 # 1) REGISTRO DIARIO
 # =========================
 
-if opcion == "Registro Diario":
+if st.session_state["menu"] == "Registro Diario":
 
     st.header("📅 Registro Diario de Mantenciones")
 
     registros = cargar_excel(ARCH_REGISTROS)
 
-    if st.session_state["rol"] == "trabajador":
+    clientes = cargar_excel(ARCH_CLIENTES)
+    servicios = cargar_excel(ARCH_SERVICIOS)
+    trabajadores = cargar_excel(ARCH_TRABAJADORES)
 
-        st.subheader("➡️ Ingresar tu trabajo del día")
+    if st.session_state["rol"] == "admin":
 
-        clientes = cargar_excel(ARCH_CLIENTES)["nombre"].tolist()
-        servicios = cargar_excel(ARCH_SERVICIOS)["servicio"].tolist()
+        st.subheader("➡️ Registrar servicio cliente por cliente")
 
         fecha = st.date_input("Fecha", date.today())
-        cliente = st.selectbox("Cliente", clientes)
-        servicio = st.selectbox("Servicio", servicios)
+        cliente = st.selectbox("Cliente", clientes["nombre"])
+        servicio = st.selectbox("Servicio", servicios["servicio"])
+        trabajador = st.selectbox("Trabajador", trabajadores["usuario"])
+        valor = st.number_input("Valor del servicio ($)", min_value=0, step=1000)
         obs = st.text_area("Observaciones (opcional)")
 
-        if st.button("Guardar Registro"):
+        if st.button("Guardar registro"):
             nuevo = pd.DataFrame([{
                 "fecha": fecha,
-                "trabajador": st.session_state["usuario"],
                 "cliente": cliente,
                 "servicio": servicio,
+                "trabajador": trabajador,
+                "valor_servicio": valor,
                 "observaciones": obs,
-                "monto_pago": ""
+                "quien_registro": "admin"
+            }])
+
+            registros = pd.concat([registros, nuevo], ignore_index=True)
+            guardar_excel(registros, ARCH_REGISTROS)
+            st.success("Registro guardado correctamente ✅")
+            st.rerun()
+
+        st.markdown("---")
+        st.subheader("📋 Historial de registros")
+        st.dataframe(registros.sort_values("fecha", ascending=False))
+
+    else:
+        # Vista del trabajador
+        st.subheader("➡️ Registrar tu trabajo del día")
+
+        fecha = st.date_input("Fecha", date.today())
+        cliente = st.selectbox("Cliente", clientes["nombre"])
+        servicio = st.selectbox("Servicio", servicios["servicio"])
+        obs = st.text_area("Observaciones (opcional)")
+
+        if st.button("Enviar registro"):
+            nuevo = pd.DataFrame([{
+                "fecha": fecha,
+                "cliente": cliente,
+                "servicio": servicio,
+                "trabajador": st.session_state["usuario"],
+                "valor_servicio": "",
+                "observaciones": obs,
+                "quien_registro": st.session_state["usuario"]
             }])
 
             registros = pd.concat([registros, nuevo], ignore_index=True)
             guardar_excel(registros, ARCH_REGISTROS)
 
-            st.success("Registro guardado correctamente ✅")
-
-    else:  # ADMIN
-
-        st.subheader("📝 Registros enviados por los trabajadores")
-
-        if registros.empty:
-            st.info("Aún no hay registros.")
-        else:
-            st.dataframe(registros)
-
-            st.markdown("---")
-            st.subheader("💰 Asignar monto de pago al trabajador")
-
-            seleccion = st.selectbox(
-                "Selecciona un registro",
-                registros.index
-            )
-
-            monto = st.number_input(
-                "Monto a pagar ($)",
-                min_value=0,
-                step=1000
-            )
-
-            if st.button("Guardar Monto"):
-                registros.loc[seleccion, "monto_pago"] = monto
-                guardar_excel(registros, ARCH_REGISTROS)
-                st.success("Monto guardado correctamente ✅")
-                st.rerun()
+            st.success("Registro enviado al administrador ✅")
 
 # =========================
 # 2) CLIENTES (SOLO ADMIN)
 # =========================
 
-if opcion == "Clientes" and st.session_state["rol"] == "admin":
+if st.session_state["menu"] == "Clientes" and st.session_state["rol"] == "admin":
 
     st.header("👥 Gestión de Clientes")
 
@@ -206,7 +223,6 @@ if opcion == "Clientes" and st.session_state["rol"] == "admin":
 
     with tab2:
         cliente_sel = st.selectbox("Selecciona cliente", clientes["nombre"])
-
         nueva_dir = st.text_input("Nueva dirección")
         nuevo_tel = st.text_input("Nuevo teléfono")
 
@@ -230,7 +246,7 @@ if opcion == "Clientes" and st.session_state["rol"] == "admin":
 # 3) SERVICIOS (SOLO ADMIN)
 # =========================
 
-if opcion == "Servicios" and st.session_state["rol"] == "admin":
+if st.session_state["menu"] == "Servicios" and st.session_state["rol"] == "admin":
 
     st.header("🛠 Gestión de Servicios")
 
@@ -276,7 +292,7 @@ if opcion == "Servicios" and st.session_state["rol"] == "admin":
 # 4) TRABAJADORES (SOLO ADMIN)
 # =========================
 
-if opcion == "Trabajadores" and st.session_state["rol"] == "admin":
+if st.session_state["menu"] == "Trabajadores" and st.session_state["rol"] == "admin":
 
     st.header("👷 Gestión de Trabajadores")
 
