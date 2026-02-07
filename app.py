@@ -1,115 +1,132 @@
 import streamlit as st
+import pandas as pd
 import time
 from datetime import datetime
+from io import BytesIO
 
-# 1. CONFIGURACIÓN DE SEGURIDAD Y PÁGINA
+# --- CONFIGURACIÓN E IDENTIDAD ---
 st.set_page_config(page_title="MantenTuJardin Pro", layout="centered")
 
-# 2. CSS PROFESIONAL (ALTO CONTRASTE)
+# CSS Profesional de Alto Contraste (Corregido para lectura clara)
 st.markdown("""
     <style>
-    .stApp { background-color: #F8F9FA; }
-    label, p, span, .stMarkdown { color: #000000 !important; font-weight: 700 !important; }
+    .stApp { background-color: #FFFFFF; }
+    label, p, span, h1, h2, h3 { color: #000000 !important; font-weight: 700 !important; }
     .stTextInput input, .stNumberInput input, .stSelectbox div {
-        background-color: #FFFFFF !important; color: #000000 !important;
+        background-color: #F8F9FA !important; color: #000000 !important;
         border: 2px solid #2E7D32 !important; border-radius: 8px !important;
     }
     div.stButton > button {
-        background-color: #2E7D32 !important; color: #FFFFFF !important;
-        height: 60px !important; width: 100% !important;
-        font-size: 18px !important; font-weight: bold !important;
-        border-radius: 12px !important; margin-bottom: 10px;
+        background-color: #2E7D32 !important; color: white !important;
+        height: 60px !important; font-weight: bold !important; border-radius: 12px !important;
     }
-    .btn-volver button { background-color: #6C757D !important; height: 45px !important; }
-    .main-card { background-color: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .main-card { background-color: #F8F9FA; padding: 20px; border-radius: 15px; border: 1px solid #E0E0E0; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. GESTIÓN DE SESIÓN Y LOGIN ---
-if 'auth' not in st.session_state: st.session_state.auth = False
-if 'rol' not in st.session_state: st.session_state.rol = None
-if 'view' not in st.session_state: st.session_state.view = "MENU"
+# --- BASE DE DATOS TEMPORAL (Para que funcione de inmediato) ---
+if 'db_clientes' not in st.session_state:
+    st.session_state.db_clientes = []
+if 'db_servicios' not in st.session_state:
+    st.session_state.db_servicios = []
+if 'auth' not in st.session_state:
+    st.session_state.auth = False
+if 'view' not in st.session_state:
+    st.session_state.view = "MENU"
 
-def login():
-    st.markdown("<h1 style='text-align:center; color:#2E7D32;'>🌱 MantenTuJardin</h1>", unsafe_allow_html=True)
-    with st.container():
-        st.markdown('<div class="main-card">', unsafe_allow_html=True)
-        user = st.text_input("Usuario / Email").lower().strip()
-        pw = st.text_input("Contraseña", type="password")
-        
-        if st.button("ACCEDER AL SISTEMA"):
-            # Lógica de acceso segura
-            if user == "esteban" and pw == "admin123":
-                st.session_state.auth, st.session_state.rol = True, "ADMIN"
-                st.rerun()
-            elif user == "trabajador" and pw == "jardin2026":
-                st.session_state.auth, st.session_state.rol = True, "TRABAJADOR"
-                st.rerun()
-            else:
-                st.error("Credenciales incorrectas")
-        st.markdown('</div>', unsafe_allow_html=True)
+# --- FUNCIONES DE LOGO Y EXPORTACIÓN ---
+def mostrar_logo():
+    try:
+        st.image("logo.jpg", width=150)
+    except:
+        st.markdown("<h2 style='color:#2E7D32;'>🌱 MantenTuJardin</h2>", unsafe_allow_html=True)
 
-# --- 4. APLICACIÓN PROTEGIDA ---
+def descargar_reporte():
+    if not st.session_state.db_servicios:
+        return None
+    df = pd.DataFrame(st.session_state.db_servicios)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Servicios')
+    return output.getvalue()
+
+# --- PANTALLA DE ACCESO (LOGIN) ---
 if not st.session_state.auth:
-    login()
-else:
-    # BOTÓN SALIR (Siempre visible arriba a la derecha)
-    col_user, col_out = st.columns([3, 1])
-    col_user.write(f"👤 **{st.session_state.rol}**")
-    if col_out.button("SALIR"):
-        st.session_state.auth = False
-        st.rerun()
+    mostrar_logo()
+    st.markdown("<div class='main-card'>", unsafe_allow_html=True)
+    user = st.text_input("Usuario")
+    pw = st.text_input("Contraseña", type="password")
+    if st.button("INICIAR SESIÓN"):
+        if user.lower() == "esteban" and pw == "admin123":
+            st.session_state.auth, st.session_state.rol = True, "ADMIN"
+            st.rerun()
+        elif user.lower() == "trabajador" and pw == "jardin2026":
+            st.session_state.auth, st.session_state.rol = True, "TRABAJADOR"
+            st.rerun()
+        else:
+            st.error("Credenciales incorrectas")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- NAVEGACIÓN SEGÚN ROL ---
+# --- SISTEMA OPERATIVO ---
+else:
+    # Cabecera
+    col_l, col_r = st.columns([2,1])
+    with col_l: mostrar_logo()
+    with col_r: 
+        if st.button("SALIR"): 
+            st.session_state.auth = False
+            st.rerun()
+
+    # MENU PRINCIPAL
     if st.session_state.view == "MENU":
-        st.subheader("Panel de Operaciones")
-        
+        st.write(f"Bienvenido, **{st.session_state.rol}**")
         if st.session_state.rol == "ADMIN":
             if st.button("📍 GESTIÓN DE CLIENTES"): st.session_state.view = "CLIENTES"; st.rerun()
-            if st.button("🛠️ REGISTRO DIARIO (BITÁCORA)"): st.session_state.view = "REGISTRO"; st.rerun()
-            if st.button("📊 CIERRE DE MES"): st.session_state.view = "CIERRE"; st.rerun()
+            if st.button("🛠️ REGISTRO DIARIO"): st.session_state.view = "REGISTRO"; st.rerun()
+            if st.button("📊 CIERRE Y EXPORTACIÓN"): st.session_state.view = "CIERRE"; st.rerun()
         else:
-            # Vista limitada para el trabajador
             if st.button("📝 REGISTRAR MI TRABAJO"): st.session_state.view = "REGISTRO"; st.rerun()
 
-    # --- SECCIÓN: CLIENTES (SOLO ADMIN) ---
-    elif st.session_state.view == "CLIENTES" and st.session_state.rol == "ADMIN":
+    # SECCIÓN CLIENTES
+    elif st.session_state.view == "CLIENTES":
         if st.button("⬅️ VOLVER"): st.session_state.view = "MENU"; st.rerun()
-        
-        tab1, tab2, tab3 = st.tabs(["➕ NUEVO", "✏️ EDITAR", "🗑️ BORRAR"])
-        
-        with tab1:
-            st.markdown('<div class="main-card">', unsafe_allow_html=True)
-            nom = st.text_input("Nombre del Cliente")
-            dir = st.text_input("Dirección")
-            ser = st.text_input("Servicio Contratado")
-            val = st.number_input("Valor Servicio ($)", min_value=0, step=1000)
-            fre = st.selectbox("Frecuencia", ["Mensual", "Por Visita"])
-            if st.button("💾 GUARDAR CLIENTE"):
-                st.success(f"Cliente {nom} guardado.")
-                time.sleep(1.2); st.session_state.view = "MENU"; st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.subheader("Nuevo Cliente")
+        with st.container():
+            st.markdown("<div class='main-card'>", unsafe_allow_html=True)
+            n = st.text_input("Nombre")
+            d = st.text_input("Dirección")
+            s = st.text_input("Servicio")
+            v = st.number_input("Valor ($)", min_value=0)
+            f = st.selectbox("Plan", ["Mensual", "Visita"])
+            if st.button("GUARDAR CLIENTE"):
+                st.session_state.db_clientes.append({"Nombre": n, "Direccion": d, "Servicio": s, "Valor": v, "Plan": f})
+                st.success("Guardado"); time.sleep(1); st.session_state.view = "MENU"; st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- SECCIÓN: REGISTRO DIARIO (AMBOS ROLES) ---
+    # SECCIÓN REGISTRO DIARIO
     elif st.session_state.view == "REGISTRO":
         if st.button("⬅️ VOLVER"): st.session_state.view = "MENU"; st.rerun()
-        
-        st.markdown('<div class="main-card">', unsafe_allow_html=True)
-        st.markdown("### Registro de Actividad")
-        st.date_input("Fecha", datetime.now())
-        
-        if st.session_state.rol == "ADMIN":
-            trab = st.selectbox("Trabajador", ["Juan Perez", "Luis Soto"])
+        st.subheader("Bitácora Diaria")
+        with st.container():
+            st.markdown("<div class='main-card'>", unsafe_allow_html=True)
+            fec = st.date_input("Fecha", datetime.now())
+            # Si no hay clientes registrados, mostramos una lista manual
+            lista_c = [c['Nombre'] for c in st.session_state.db_clientes] if st.session_state.db_clientes else ["Yasna", "Francisca"]
+            cl = st.selectbox("Cliente", lista_c)
+            det = st.multiselect("Trabajos", ["Pasto", "Piscina", "Poda", "Riego"])
+            pag = st.number_input("Pago Trabajador ($)", min_value=0)
+            if st.button("FINALIZAR REGISTRO"):
+                st.session_state.db_servicios.append({"Fecha": fec, "Cliente": cl, "Trabajo": det, "Pago": pag})
+                st.success("Registrado"); time.sleep(1); st.session_state.view = "MENU"; st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # SECCIÓN CIERRE
+    elif st.session_state.view == "CIERRE":
+        if st.button("⬅️ VOLVER"): st.session_state.view = "MENU"; st.rerun()
+        st.subheader("Exportar Datos")
+        if st.session_state.db_servicios:
+            st.write(f"Tienes {len(st.session_state.db_servicios)} registros este mes.")
+            excel_data = descargar_reporte()
+            st.download_button(label="📥 DESCARGAR EXCEL", data=excel_data, file_name="Reporte_Jardin.xlsx")
         else:
-            st.write(f"Trabajador: **{st.session_state.rol}**")
-            
-        clie = st.selectbox("Cliente Atendido", ["Yasna", "Francisca", "Don Jose"])
-        task = st.multiselect("Tareas", ["Pasto", "Piscina", "Poda", "Otros"])
-        
-        if st.session_state.rol == "ADMIN":
-            pago = st.number_input("Pago asignado por este servicio ($)", min_value=0)
-            
-        if st.button("✅ FINALIZAR REGISTRO"):
-            st.success("Información enviada con éxito.")
-            time.sleep(1.2); st.session_state.view = "MENU"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.warning("No hay datos para exportar aún.")
