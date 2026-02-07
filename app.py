@@ -2,104 +2,143 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# Configuración básica
-st.set_page_config(page_title="MantenTuJardin", layout="centered")
+# 1. CONFIGURACIÓN TÉCNICA
+st.set_page_config(page_title="MantenTuJardin Pro", layout="centered", page_icon="🌱")
 
-# Estilo para botones gigantes y estética móvil
+# 2. DISEÑO PROFESIONAL (CSS PERSONALIZADO)
 st.markdown("""
     <style>
-    .stButton button {
-        width: 100%;
-        height: 80px;
-        font-size: 20px;
-        border-radius: 15px;
-        margin-bottom: 10px;
+    /* Fondo y tipografía */
+    .stApp { background-color: #f8f9fa; }
+    
+    /* Botones Principales */
+    div.stButton > button {
+        background-color: #ffffff;
+        color: #2e7d32; /* Verde bosque */
+        border: 2px solid #2e7d32;
+        border-radius: 12px;
+        height: 70px;
+        font-weight: bold;
+        font-size: 18px;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.05);
+        transition: all 0.3s;
     }
-    .volver-btn button {
-        height: 40px;
-        background-color: #f0f2f6;
+    div.stButton > button:hover {
+        background-color: #2e7d32;
+        color: white;
+        transform: translateY(-2px);
+    }
+    
+    /* Botón de Salir */
+    .logout-btn button {
+        background-color: #fce4ec !important;
+        color: #c2185b !important;
+        border: none !important;
+        height: 40px !important;
+    }
+    
+    /* Tarjetas de información */
+    .card {
+        background-color: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 1. LOGO Y SESIÓN ---
-try:
-    st.image("logo.jpg", width=200)
-except:
-    st.title("🌱 MantenTuJardin")
-
+# --- LÓGICA DE ESTADO ---
 if 'autenticado' not in st.session_state:
     st.session_state.autenticado = False
-if 'menu_actual' not in st.session_state:
-    st.session_state.menu_actual = "Inicio"
+if 'seccion' not in st.session_state:
+    st.session_state.seccion = "Inicio"
 
-# --- 2. LOGIN ---
+# --- PANTALLA DE LOGIN PROFESIONAL ---
 if not st.session_state.autenticado:
-    user = st.text_input("Usuario").lower()
-    password = st.text_input("Clave", type="password")
-    if st.button("INICIAR SESIÓN"):
-        if user == "esteban" and password == "admin123":
-            st.session_state.autenticado, st.session_state.rol = True, "admin"
-            st.rerun()
-        elif user == "trabajador" and password == "jardin2026":
-            st.session_state.autenticado, st.session_state.rol = True, "trabajador"
-            st.rerun()
-        else:
-            st.error("Datos incorrectos")
+    st.markdown("<h1 style='text-align: center; color: #1b5e20;'>MantenTuJardin</h1>", unsafe_allow_html=True)
+    try:
+        st.image("logo.jpg", width=200)
+    except: pass
+    
+    with st.container():
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        user = st.text_input("Usuario / Email").lower()
+        password = st.text_input("Contraseña", type="password")
+        if st.button("ACCEDER AL SISTEMA"):
+            if user == "esteban" and password == "admin123":
+                st.session_state.autenticado, st.session_state.rol, st.session_state.usuario = True, "admin", "Esteban"
+                st.rerun()
+            elif user == "trabajador" and password == "jardin2026":
+                st.session_state.autenticado, st.session_state.rol, st.session_state.usuario = True, "trabajador", "Operario"
+                st.rerun()
+            else:
+                st.error("Credenciales no autorizadas.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-# --- 3. MENÚ PRINCIPAL (BOTONERA) ---
+# --- PANEL DE CONTROL ---
 else:
-    if st.session_state.menu_actual == "Inicio":
-        st.subheader(f"Hola, {st.session_state.usuario if 'usuario' in st.session_state else 'Bienvenido'}")
+    # Encabezado con Logo
+    col_logo, col_text = st.columns([1, 2])
+    with col_logo:
+        try: st.image("logo.jpg", width=80)
+        except: st.write("🌱")
+    with col_text:
+        st.markdown(f"**{st.session_state.usuario}**<br><small>{st.session_state.rol.upper()}</small>", unsafe_allow_html=True)
+
+    st.divider()
+
+    if st.session_state.seccion == "Inicio":
+        st.subheader("Menú de Gestión")
         
-        # Botones según Rol
+        # Botonera Estilo App Móvil Profesional
         if st.session_state.rol == "admin":
-            if st.button("📍 CLIENTES"): st.session_state.menu_actual = "Clientes"; st.rerun()
-            if st.button("🛠️ NUEVO SERVICIO"): st.session_state.menu_actual = "Servicio"; st.rerun()
-            if st.button("📊 CIERRE DE MES"): st.session_state.menu_actual = "Cierre"; st.rerun()
-            if st.button("👥 EQUIPO"): st.session_state.menu_actual = "Equipo"; st.rerun()
+            if st.button("📍 Gestión de Clientes"): 
+                st.session_state.seccion = "Clientes"; st.rerun()
+            if st.button("🛠️ Registro de Servicio"): 
+                st.session_state.seccion = "Servicio"; st.rerun()
+            if st.button("📊 Reportes y Cierre"): 
+                st.session_state.seccion = "Cierre"; st.rerun()
+            if st.button("👥 Gestión de Equipo"): 
+                st.session_state.seccion = "Equipo"; st.rerun()
         else:
-            if st.button("🛠️ REGISTRAR TRABAJO"): st.session_state.menu_actual = "Servicio"; st.rerun()
-            if st.button("📅 MIS TRABAJOS"): st.session_state.menu_actual = "MisTrabajos"; st.rerun()
-        
-        st.divider()
-        if st.button("SALIR"):
+            if st.button("🛠️ Registrar Trabajo Diario"): 
+                st.session_state.seccion = "Servicio"; st.rerun()
+            if st.button("📅 Mi Historial"): 
+                st.session_state.seccion = "Historial"; st.rerun()
+
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        if st.button("SALIR DEL SISTEMA"):
             st.session_state.autenticado = False
             st.rerun()
 
-    # --- 4. SECCIONES (CRUD) ---
+    # --- SECCIONES DETALLADAS ---
     else:
-        # Botón para volver siempre arriba
-        if st.button("⬅️ VOLVER AL MENÚ"):
-            st.session_state.menu_actual = "Inicio"
+        if st.button("⬅️ VOLVER"):
+            st.session_state.seccion = "Inicio"
             st.rerun()
 
-        if st.session_state.menu_actual == "Clientes":
-            st.header("📍 Clientes")
-            opc = st.radio("Acción", ["Ver Lista", "Nuevo", "Modificar", "Eliminar"], horizontal=True)
-            if opc == "Nuevo":
-                st.text_input("Nombre Cliente")
-                st.text_input("Dirección")
-                st.button("GUARDAR CLIENTE")
-            else:
-                st.write("Lista de clientes aparecerá aquí.")
+        st.markdown(f"### {st.session_state.seccion}")
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
 
-        elif st.session_state.menu_actual == "Servicio":
-            st.header("🛠️ Registro Diario")
-            with st.form("registro"):
-                st.date_input("Fecha", datetime.now())
-                st.selectbox("Cliente", ["Yasna", "Francisca", "Don Jose"])
-                st.multiselect("Trabajo", ["Césped", "Piscina", "Poda", "Riego"])
-                st.text_area("Notas")
-                if st.form_submit_button("REGISTRAR"):
-                    st.success("¡Registrado!")
+        if st.session_state.seccion == "Clientes":
+            modo = st.radio("Acción", ["Ver Todos", "Nuevo", "Modificar"], horizontal=True)
+            if modo == "Nuevo":
+                st.text_input("Nombre Completo")
+                st.text_input("Dirección Google Maps")
+                st.button("CONFIRMAR REGISTRO")
 
-        elif st.session_state.menu_actual == "Cierre":
-            st.header("📊 Cierre Mensual")
-            st.selectbox("Mes", ["Enero", "Febrero", "Marzo"])
-            st.button("📥 EXPORTAR EXCEL")
+        elif st.session_state.seccion == "Servicio":
+            st.date_input("Fecha de Servicio", datetime.now())
+            st.selectbox("Cliente", ["Yasna", "Francisca", "Don Jose"])
+            st.multiselect("Actividades", ["Corte de Pasto", "Aspirado Piscina", "Químicos", "Poda", "Abono"])
+            st.text_area("Notas del Terreno")
+            if st.button("FINALIZAR Y GUARDAR"):
+                st.success("Registro almacenado correctamente.")
 
-        elif st.session_state.menu_actual == "Equipo":
-            st.header("👥 Trabajadores")
-            st.write("Configuración de operarios.")
-            st.button("AÑADIR TRABAJADOR")
+        elif st.session_state.seccion == "Cierre":
+            st.write("Generación de documentos mensuales.")
+            st.selectbox("Seleccione Mes", ["Febrero 2026", "Enero 2026"])
+            st.button("📥 EXPORTAR PLANILLA EXCEL")
+
+        st.markdown("</div>", unsafe_allow_html=True)
