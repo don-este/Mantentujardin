@@ -20,7 +20,6 @@ def crear_archivos_si_no_existen():
         pd.DataFrame(columns=["servicio","descripcion"]).to_excel(ARCH_SERVICIOS, index=False)
 
     if not os.path.exists(ARCH_TRABAJADORES):
-        # usuario, password, nombre, rol
         df = pd.DataFrame([{
             "usuario":"admin",
             "password":"admin",
@@ -48,7 +47,7 @@ def guardar_excel(df, ruta):
     df.to_excel(ruta, index=False)
 
 # =========================
-# LOGIN
+# ESTADO DE SESIÓN
 # =========================
 
 if "autenticado" not in st.session_state:
@@ -56,6 +55,11 @@ if "autenticado" not in st.session_state:
     st.session_state["rol"] = None
     st.session_state["usuario"] = None
     st.session_state["nombre"] = None
+    st.session_state["pantalla"] = "menu"
+
+# =========================
+# LOGIN
+# =========================
 
 def login():
     st.title("🔐 Acceso al Sistema")
@@ -66,7 +70,13 @@ def login():
     if st.button("Ingresar"):
         trabajadores = cargar_excel(ARCH_TRABAJADORES)
 
-        # LIMPIEZA PARA EVITAR ERRORES DE LOGIN
+        # Blindaje por si falta la columna rol
+        if "rol" not in trabajadores.columns:
+            trabajadores["rol"] = "trabajador"
+            trabajadores.loc[trabajadores["usuario"] == "admin", "rol"] = "admin"
+            guardar_excel(trabajadores, ARCH_TRABAJADORES)
+
+        # Limpieza de datos para evitar fallos de login
         trabajadores["usuario"] = trabajadores["usuario"].astype(str).str.strip()
         trabajadores["password"] = trabajadores["password"].astype(str).str.strip()
         trabajadores["rol"] = trabajadores["rol"].astype(str).str.strip()
@@ -90,14 +100,13 @@ def login():
             st.error("Usuario o contraseña incorrectos")
 
 # =========================
-# MENÚ PRINCIPAL CON BOTONES
+# MENÚ PRINCIPAL CON BOTONES (PRIMERO)
 # =========================
 
 def menu_principal():
     st.title("📋 Menú Principal")
 
-    st.write(f"👤 Sesión iniciada como: **{st.session_state['nombre']}** ({st.session_state['rol']})")
-
+    st.write(f"👤 Sesión: **{st.session_state['nombre']}** ({st.session_state['rol']})")
     st.markdown("---")
 
     if st.session_state["rol"] == "admin":
@@ -152,7 +161,7 @@ def registro_diario():
     servicio = st.selectbox("Servicio", servicios["servicio"])
     trabajador = st.selectbox("Trabajador", trabajadores["nombre"])
 
-    valor = None
+    valor = ""
     if st.session_state["rol"] == "admin":
         valor = st.number_input("Valor del servicio ($)", min_value=0, step=1000)
 
@@ -164,7 +173,7 @@ def registro_diario():
             "cliente": cliente,
             "servicio": servicio,
             "trabajador": trabajador,
-            "valor_servicio": valor if st.session_state["rol"]=="admin" else "",
+            "valor_servicio": valor,
             "registrado_por": st.session_state["nombre"]
         }])
 
@@ -172,6 +181,10 @@ def registro_diario():
         guardar_excel(registros, ARCH_REGISTROS)
 
         st.success("Registro guardado correctamente ✅")
+
+    if st.button("⬅️ Volver al menú"):
+        st.session_state["pantalla"] = "menu"
+        st.experimental_rerun()
 
 # =========================
 # CLIENTES (SOLO ADMIN)
@@ -181,7 +194,6 @@ def gestion_clientes():
     st.header("👥 Gestión de Clientes")
 
     clientes = cargar_excel(ARCH_CLIENTES)
-
     opcion = st.radio("Selecciona acción", ["Agregar","Modificar","Eliminar"])
 
     if opcion == "Agregar":
@@ -195,7 +207,6 @@ def gestion_clientes():
                 "direccion": direccion.strip(),
                 "telefono": telefono.strip()
             }])
-
             clientes = pd.concat([clientes, nuevo], ignore_index=True)
             guardar_excel(clientes, ARCH_CLIENTES)
             st.success("Cliente agregado ✅")
@@ -215,12 +226,16 @@ def gestion_clientes():
             guardar_excel(clientes, ARCH_CLIENTES)
             st.success("Cliente modificado ✅")
 
-    else: # Eliminar
+    else:
         sel = st.selectbox("Cliente", clientes["nombre"])
         if st.button("Eliminar cliente"):
             clientes = clientes[clientes["nombre"] != sel]
             guardar_excel(clientes, ARCH_CLIENTES)
             st.success("Cliente eliminado ❌")
+
+    if st.button("⬅️ Volver al menú"):
+        st.session_state["pantalla"] = "menu"
+        st.experimental_rerun()
 
 # =========================
 # SERVICIOS (SOLO ADMIN)
@@ -230,7 +245,6 @@ def gestion_servicios():
     st.header("🛠️ Gestión de Servicios")
 
     servicios = cargar_excel(ARCH_SERVICIOS)
-
     opcion = st.radio("Selecciona acción", ["Agregar","Modificar","Eliminar"])
 
     if opcion == "Agregar":
@@ -267,6 +281,10 @@ def gestion_servicios():
             guardar_excel(servicios, ARCH_SERVICIOS)
             st.success("Servicio eliminado ❌")
 
+    if st.button("⬅️ Volver al menú"):
+        st.session_state["pantalla"] = "menu"
+        st.experimental_rerun()
+
 # =========================
 # TRABAJADORES (SOLO ADMIN)
 # =========================
@@ -275,7 +293,6 @@ def gestion_trabajadores():
     st.header("🧑‍🔧 Gestión de Trabajadores")
 
     trabajadores = cargar_excel(ARCH_TRABAJADORES)
-
     opcion = st.radio("Selecciona acción", ["Agregar","Modificar","Eliminar"])
 
     if opcion == "Agregar":
@@ -316,6 +333,10 @@ def gestion_trabajadores():
             guardar_excel(trabajadores, ARCH_TRABAJADORES)
             st.success("Trabajador eliminado ❌")
 
+    if st.button("⬅️ Volver al menú"):
+        st.session_state["pantalla"] = "menu"
+        st.experimental_rerun()
+
 # =========================
 # CONTROL DE PANTALLAS
 # =========================
@@ -323,32 +344,13 @@ def gestion_trabajadores():
 if not st.session_state["autenticado"]:
     login()
 else:
-    if "pantalla" not in st.session_state:
-        st.session_state["pantalla"] = "menu"
-
     if st.session_state["pantalla"] == "menu":
         menu_principal()
-
     elif st.session_state["pantalla"] == "registro":
         registro_diario()
-        if st.button("⬅️ Volver al menú"):
-            st.session_state["pantalla"] = "menu"
-            st.experimental_rerun()
-
     elif st.session_state["pantalla"] == "clientes":
         gestion_clientes()
-        if st.button("⬅️ Volver al menú"):
-            st.session_state["pantalla"] = "menu"
-            st.experimental_rerun()
-
     elif st.session_state["pantalla"] == "servicios":
         gestion_servicios()
-        if st.button("⬅️ Volver al menú"):
-            st.session_state["pantalla"] = "menu"
-            st.experimental_rerun()
-
     elif st.session_state["pantalla"] == "trabajadores":
         gestion_trabajadores()
-        if st.button("⬅️ Volver al menú"):
-            st.session_state["pantalla"] = "menu"
-            st.experimental_rerun()
