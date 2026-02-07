@@ -1,167 +1,138 @@
 import streamlit as st
 import pandas as pd
-import time
-from datetime import datetime
-from io import BytesIO
+from datetime import date
+import os
 
-# --- 1. CONFIGURACIÓN Y ESTILO (UX MÓVIL) ---
-st.set_page_config(page_title="MantenTuJardin Pro", layout="centered")
+# -----------------------------
+# CONFIGURACIÓN DEL ARCHIVO
+# -----------------------------
+ARCHIVO = "registros_mantencion.xlsx"
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #FFFFFF; }
-    /* Texto Negro Puro para máxima legibilidad */
-    label, p, span, h1, h2, h3 { color: #000000 !important; font-weight: 800 !important; }
-    
-    /* Inputs Estilo Premium */
-    .stTextInput input, .stNumberInput input, .stSelectbox div, .stTextArea textarea {
-        background-color: #F1F3F4 !important;
-        color: #000000 !important;
-        border: 2px solid #2E7D32 !important;
-        border-radius: 12px !important;
-        height: 45px;
-    }
+# Si el archivo no existe, crearlo con columnas base
+if not os.path.exists(ARCHIVO):
+    df_init = pd.DataFrame(columns=[
+        "fecha",
+        "cliente",
+        "tipo_servicio",
+        "trabajador",
+        "monto_cliente",
+        "observaciones"
+    ])
+    df_init.to_excel(ARCHIVO, index=False, engine="openpyxl")
 
-    /* Botones Gigantes para Pulgar */
-    div.stButton > button {
-        background-color: #2E7D32 !important;
-        color: white !important;
-        height: 70px !important;
-        width: 100% !important;
-        border-radius: 15px !important;
-        font-size: 20px !important;
-        font-weight: bold !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border: none !important;
-    }
-    
-    /* Tarjeta de Formulario */
-    .form-container {
-        background-color: #FFFFFF;
-        padding: 20px;
-        border: 1px solid #E0E0E0;
-        border-radius: 20px;
-        margin-bottom: 20px;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Función para cargar datos
+def cargar_datos():
+    return pd.read_excel(ARCHIVO, engine="openpyxl")
 
-# --- 2. PERSISTENCIA DE DATOS (ESTADO DE SESIÓN) ---
-if 'auth' not in st.session_state: st.session_state.auth = False
-if 'view' not in st.session_state: st.session_state.view = "MENU"
-if 'clientes' not in st.session_state: st.session_state.clientes = []
-if 'servicios' not in st.session_state: st.session_state.servicios = []
+# Función para guardar datos
+def guardar_datos(df):
+    df.to_excel(ARCHIVO, index=False, engine="openpyxl")
 
-# --- 3. FUNCIONES CORE ---
-def logo():
-    try: st.image("logo.jpg", width=160)
-    except: st.markdown("<h1 style='color:#2E7D32;'>🌱 MANTEN TU JARDÍN</h1>", unsafe_allow_html=True)
+# -----------------------------
+# APP STREAMLIT
+# -----------------------------
+st.title("🌿 Registro de Mantenciones - Jardines y Piscinas")
 
-def generar_excel():
-    if not st.session_state.servicios: return None
-    df = pd.DataFrame(st.session_state.servicios)
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False)
-    return output.getvalue()
+menu = st.sidebar.selectbox(
+    "Selecciona una opción:",
+    ["Nueva Mantención", "Historial", "Resumen Mensual"]
+)
 
-# --- 4. LÓGICA DE PANTALLAS ---
+df = cargar_datos()
 
-# A. LOGIN
-if not st.session_state.auth:
-    logo()
-    st.markdown("### Acceso al Sistema")
-    with st.container():
-        user = st.text_input("Usuario")
-        pw = st.text_input("Contraseña", type="password")
-        if st.button("ENTRAR"):
-            if user.lower() == "esteban" and pw == "admin123":
-                st.session_state.auth, st.session_state.rol = True, "ADMIN"
-                st.rerun()
-            elif user.lower() == "trabajador" and pw == "jardin2026":
-                st.session_state.auth, st.session_state.rol = True, "TRABAJADOR"
-                st.rerun()
-            else: st.error("Acceso Denegado")
+# -----------------------------
+# PESTAÑA 1: NUEVA MANTENCIÓN
+# -----------------------------
+if menu == "Nueva Mantención":
+    st.header("📌 Nueva Mantención")
 
-# B. MENÚ PRINCIPAL
-elif st.session_state.view == "MENU":
-    logo()
-    st.write(f"Conectado como: **{st.session_state.rol}**")
-    
-    if st.session_state.rol == "ADMIN":
-        # Métricas rápidas (Dashboard)
-        c1, c2 = st.columns(2)
-        c1.metric("Clientes", len(st.session_state.clientes))
-        c2.metric("Servicios hoy", len([s for s in st.session_state.servicios if s['Fecha'] == datetime.now().date()]))
-        
-        st.divider()
-        if st.button("📍 GESTIÓN DE CLIENTES"): st.session_state.view = "CLIENTES"; st.rerun()
-        if st.button("🛠️ REGISTRO DIARIO"): st.session_state.view = "REGISTRO"; st.rerun()
-        if st.button("📊 CIERRE Y REPORTES"): st.session_state.view = "REPORTES"; st.rerun()
-    else:
-        if st.button("📝 REGISTRAR TRABAJO"): st.session_state.view = "REGISTRO"; st.rerun()
+    with st.form("form_mantencion"):
+        fecha = st.date_input("Fecha", date.today())
 
-    if st.button("🚪 CERRAR SESIÓN"):
-        st.session_state.auth = False
-        st.rerun()
+        cliente = st.selectbox(
+            "Cliente",
+            options=[
+                "Francisca Las Rastras",
+                "Condominio",
+                "Yasna P San Valentín",
+                "Felipe",
+                "José Manuel",
+                "Jorge el llano",
+                "Alex el Galpón",
+                "Sebastián"
+            ]
+        )
 
-# C. GESTIÓN DE CLIENTES
-elif st.session_state.view == "CLIENTES":
-    if st.button("⬅️ VOLVER"): st.session_state.view = "MENU"; st.rerun()
-    
-    opcion = st.radio("Acción", ["Nuevo Cliente", "Modificar/Eliminar"], horizontal=True)
-    
-    if opcion == "Nuevo Cliente":
-        st.markdown("<div class='form-container'>", unsafe_allow_html=True)
-        nom = st.text_input("Nombre Completo")
-        dir = st.text_input("Dirección")
-        ser = st.text_input("Servicio Contratado")
-        val = st.number_input("Valor Cobrado ($)", min_value=0)
-        fre = st.selectbox("Frecuencia", ["Mensual", "Por Visita"])
-        
-        if st.button("💾 GUARDAR"):
-            if nom and dir:
-                st.session_state.clientes.append({"Nombre": nom, "Direccion": dir, "Servicio": ser, "Valor": val, "Plan": fre})
-                st.success("Cliente Registrado")
-                time.sleep(1); st.session_state.view = "MENU"; st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+        tipo_servicio = st.selectbox(
+            "Tipo de servicio",
+            ["Jardín", "Piscina", "Ambos", "Trabajo especial"]
+        )
 
-# D. REGISTRO DIARIO (BITÁCORA)
-elif st.session_state.view == "REGISTRO":
-    if st.button("⬅️ VOLVER"): st.session_state.view = "MENU"; st.rerun()
-    st.header("Registro Diario")
-    
-    st.markdown("<div class='form-container'>", unsafe_allow_html=True)
-    fec = st.date_input("Fecha", datetime.now())
-    
-    # Lista de clientes dinámica
-    clie_list = [c['Nombre'] for c in st.session_state.clientes] if st.session_state.clientes else ["Yasna", "Francisca", "Jose"]
-    clie = st.selectbox("Seleccionar Cliente", clie_list)
-    
-    det = st.multiselect("Trabajos realizados", ["Corte Pasto", "Orillado", "Piscina (Aspirado)", "Piscina (Químicos)", "Poda", "Riego"])
-    obs = st.text_area("Notas del terreno")
-    
-    if st.session_state.rol == "ADMIN":
-        pago = st.number_input("Monto Pago para Trabajador ($)", min_value=0)
-    else: pago = 0 # El trabajador no ve esto
-    
-    if st.button("✅ FINALIZAR Y VOLVER"):
-        st.session_state.servicios.append({"Fecha": fec, "Cliente": clie, "Tareas": det, "Pago": pago, "Obs": obs})
-        st.success("¡Registro Exitoso!")
-        time.sleep(1); st.session_state.view = "MENU"; st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+        trabajador = st.selectbox(
+            "Trabajador",
+            ["Diego", "Solo", "Otro"]
+        )
 
-# E. REPORTES Y CIERRE
-elif st.session_state.view == "REPORTES":
-    if st.button("⬅️ VOLVER"): st.session_state.view = "MENU"; st.rerun()
-    st.header("Cierre de Mes")
-    
-    if st.session_state.servicios:
-        df = pd.DataFrame(st.session_state.servicios)
-        st.write("Resumen de servicios registrados:")
-        st.dataframe(df)
-        
-        data = generar_excel()
-        st.download_button("📥 DESCARGAR EXCEL DE PAGOS", data, "Cierre_Mes.xlsx")
-    else:
-        st.warning("No hay datos registrados aún.")
+        monto = st.number_input("Monto cliente ($)", min_value=0, step=1000)
+
+        observaciones = st.text_area("Observaciones")
+
+        enviado = st.form_submit_button("Guardar registro")
+
+        if enviado:
+            nuevo_registro = pd.DataFrame([{
+                "fecha": fecha,
+                "cliente": cliente,
+                "tipo_servicio": tipo_servicio,
+                "trabajador": trabajador,
+                "monto_cliente": monto,
+                "observaciones": observaciones
+            }])
+
+            df_actualizado = pd.concat([df, nuevo_registro], ignore_index=True)
+            guardar_datos(df_actualizado)
+
+            st.success("✅ Mantención registrada correctamente!")
+
+# -----------------------------
+# PESTAÑA 2: HISTORIAL
+# -----------------------------
+elif menu == "Historial":
+    st.header("📋 Historial de Mantenciones")
+
+    # Filtros
+    cliente_filtro = st.selectbox(
+        "Filtrar por cliente",
+        ["Todos"] + list(df["cliente"].unique())
+    )
+
+    if cliente_filtro != "Todos":
+        df = df[df["cliente"] == cliente_filtro]
+
+    st.dataframe(df)
+
+# -----------------------------
+# PESTAÑA 3: RESUMEN MENSUAL
+# -----------------------------
+elif menu == "Resumen Mensual":
+    st.header("📊 Resumen Mensual")
+
+    if not df.empty:
+        df["mes"] = pd.to_datetime(df["fecha"]).dt.to_period("M")
+
+        mes_seleccionado = st.selectbox(
+            "Selecciona mes",
+            df["mes"].astype(str).unique()
+        )
+
+        df_mes = df[df["mes"].astype(str) == mes_seleccionado]
+
+        total_mes = df_mes["monto_cliente"].sum()
+
+        st.metric("💰 Total facturado en el mes", f"${total_mes:,.0f}")
+
+        st.subheader("Trabajos por cliente")
+        st.dataframe(
+            df_mes.groupby("cliente")["monto_cliente"].sum().reset_index()
+        )
+
