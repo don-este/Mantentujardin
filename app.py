@@ -4,37 +4,47 @@ from datetime import date
 import os
 
 # ======================================================
-# CONFIGURACIÓN INICIAL DEL ARCHIVO
+# ARCHIVOS DE DATOS
 # ======================================================
 
-ARCHIVO = "registros_mantencion.xlsx"
+ARCHIVO_CLIENTES = "clientes.xlsx"
+ARCHIVO_REGISTROS = "registros_diarios.xlsx"
 
-# Si el archivo no existe, se crea con las columnas base
-if not os.path.exists(ARCHIVO):
-    df_init = pd.DataFrame(columns=[
+# Crear archivos si no existen
+if not os.path.exists(ARCHIVO_CLIENTES):
+    pd.DataFrame(columns=["nombre", "direccion", "telefono"]).to_excel(
+        ARCHIVO_CLIENTES, index=False, engine="openpyxl"
+    )
+
+if not os.path.exists(ARCHIVO_REGISTROS):
+    pd.DataFrame(columns=[
         "fecha",
         "cliente",
-        "tipo_servicio",
+        "servicio",
         "trabajador",
-        "monto_cliente",
-        "observaciones"
-    ])
-    df_init.to_excel(ARCHIVO, index=False, engine="openpyxl")
+        "valor_visita"
+    ]).to_excel(ARCHIVO_REGISTROS, index=False, engine="openpyxl")
 
-def cargar_datos():
-    return pd.read_excel(ARCHIVO, engine="openpyxl")
+def cargar_clientes():
+    return pd.read_excel(ARCHIVO_CLIENTES, engine="openpyxl")
 
-def guardar_datos(df):
-    df.to_excel(ARCHIVO, index=False, engine="openpyxl")
+def guardar_clientes(df):
+    df.to_excel(ARCHIVO_CLIENTES, index=False, engine="openpyxl")
+
+def cargar_registros():
+    return pd.read_excel(ARCHIVO_REGISTROS, engine="openpyxl")
+
+def guardar_registros(df):
+    df.to_excel(ARCHIVO_REGISTROS, index=False, engine="openpyxl")
 
 # ======================================================
-# SISTEMA DE LOGIN (VERSIÓN FUNCIONAL Y ACTUAL)
+# LOGIN SIMPLE (para celular)
 # ======================================================
 
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
-st.title("🔐 Acceso al Registro de Mantenciones")
+st.title("🔐 Acceso al Sistema")
 
 if not st.session_state["autenticado"]:
     usuario = st.text_input("Usuario")
@@ -43,130 +53,168 @@ if not st.session_state["autenticado"]:
     if st.button("Ingresar"):
         if usuario == "admin" and password == "1234":
             st.session_state["autenticado"] = True
-            st.rerun()   # ✅ función correcta en Streamlit actual
+            st.rerun()
         else:
             st.error("Usuario o contraseña incorrectos")
 
-    st.stop()  # Detiene la app hasta que se loguee
+    st.stop()
 
 # ======================================================
-# APP PRINCIPAL (SOLO SI ESTÁ LOGUEADO)
+# APP PRINCIPAL
 # ======================================================
 
-st.title("🌿 Mantenciones - Jardín & Piscina")
+st.title("🌿 Sistema de Mantenciones")
 
 menu = st.sidebar.selectbox(
     "Menú",
-    ["Nueva Mantención", "Historial", "Resumen Mensual"]
+    ["Registro Diario", "Clientes"]
 )
 
-df = cargar_datos()
+clientes_df = cargar_clientes()
+registros_df = cargar_registros()
 
-# ------------------------------------------------------
-# PESTAÑA 1: NUEVA MANTENCIÓN (MÓVIL FRIENDLY)
-# ------------------------------------------------------
-if menu == "Nueva Mantención":
+# ======================================================
+# 1️⃣ REGISTRO DIARIO
+# ======================================================
+if menu == "Registro Diario":
 
-    st.header("📌 Nueva Mantención")
+    st.header("📅 Registro Diario")
 
-    with st.form("form_mantencion"):
+    with st.form("form_registro"):
 
-        # Dos columnas para que se vea mejor en celular
-        col1, col2 = st.columns(2)
+        fecha = st.date_input("Fecha", date.today())
 
-        with col1:
-            fecha = st.date_input("Fecha", date.today())
+        # Lista de clientes dinámica
+        lista_clientes = list(clientes_df["nombre"]) if not clientes_df.empty else ["(Sin clientes)"]
 
-            cliente = st.selectbox(
-                "Cliente",
-                [
-                    "Francisca Las Rastras",
-                    "Condominio",
-                    "Yasna P San Valentín",
-                    "Felipe",
-                    "José Manuel",
-                    "Jorge el llano",
-                    "Alex el Galpón",
-                    "Sebastián"
-                ]
-            )
+        cliente = st.selectbox("Cliente", lista_clientes)
 
-        with col2:
-            tipo_servicio = st.selectbox(
-                "Tipo de servicio",
-                ["Jardín", "Piscina", "Ambos", "Especial"]
-            )
+        servicio = st.selectbox(
+            "Servicio",
+            ["Mantención Jardín", "Mantención Piscina", "Ambos", "Especial"]
+        )
 
-            trabajador = st.selectbox(
-                "Trabajador",
-                ["Diego", "Solo", "Otro"]
-            )
+        trabajador = st.selectbox(
+            "Trabajador",
+            ["Diego", "Solo", "Otro"]
+        )
 
-        monto = st.number_input("Monto cliente ($)", min_value=0, step=1000)
+        valor = st.number_input("Valor de la visita ($)", min_value=0, step=1000)
 
-        observaciones = st.text_area("Observaciones")
-
-        enviado = st.form_submit_button("💾 Guardar Mantención")
+        enviado = st.form_submit_button("💾 Guardar Registro")
 
         if enviado:
-            nuevo_registro = pd.DataFrame([{
+            nuevo = pd.DataFrame([{
                 "fecha": fecha,
                 "cliente": cliente,
-                "tipo_servicio": tipo_servicio,
+                "servicio": servicio,
                 "trabajador": trabajador,
-                "monto_cliente": monto,
-                "observaciones": observaciones
+                "valor_visita": valor
             }])
 
-            df_actualizado = pd.concat([df, nuevo_registro], ignore_index=True)
-            guardar_datos(df_actualizado)
+            registros_actualizados = pd.concat([registros_df, nuevo], ignore_index=True)
+            guardar_registros(registros_actualizados)
 
-            st.success("✅ Registro guardado correctamente!")
+            st.success("✅ Registro diario guardado correctamente")
 
-# ------------------------------------------------------
-# PESTAÑA 2: HISTORIAL
-# ------------------------------------------------------
-elif menu == "Historial":
-    st.header("📋 Historial de Mantenciones")
+    # Mostrar últimos registros
+    st.subheader("Últimos registros")
+    st.dataframe(registros_df.tail(10))
 
-    if df.empty:
-        st.info("Aún no hay registros guardados.")
-    else:
-        cliente_filtro = st.selectbox(
-            "Filtrar por cliente",
-            ["Todos"] + list(df["cliente"].unique())
-        )
+# ======================================================
+# 2️⃣ CLIENTES (CRUD)
+# ======================================================
+elif menu == "Clientes":
 
-        df_mostrar = df.copy()
+    st.header("👥 Gestión de Clientes")
 
-        if cliente_filtro != "Todos":
-            df_mostrar = df_mostrar[df_mostrar["cliente"] == cliente_filtro]
+    opcion = st.radio(
+        "¿Qué quieres hacer?",
+        ["➕ Nuevo cliente", "✏️ Modificar cliente", "🗑️ Eliminar cliente"]
+    )
 
-        st.dataframe(df_mostrar)
+    # -------------------------
+    # NUEVO CLIENTE
+    # -------------------------
+    if opcion == "➕ Nuevo cliente":
 
-# ------------------------------------------------------
-# PESTAÑA 3: RESUMEN MENSUAL
-# ------------------------------------------------------
-elif menu == "Resumen Mensual":
-    st.header("📊 Resumen Mensual")
+        st.subheader("Agregar nuevo cliente")
 
-    if df.empty:
-        st.info("No hay datos para mostrar resumen.")
-    else:
-        df["mes"] = pd.to_datetime(df["fecha"]).dt.to_period("M")
+        with st.form("form_cliente"):
+            nombre = st.text_input("Nombre del cliente")
+            direccion = st.text_input("Dirección")
+            telefono = st.text_input("Teléfono")
 
-        mes_seleccionado = st.selectbox(
-            "Selecciona mes",
-            df["mes"].astype(str).unique()
-        )
+            guardar = st.form_submit_button("Guardar cliente")
 
-        df_mes = df[df["mes"].astype(str) == mes_seleccionado]
+            if guardar:
+                nuevo_cliente = pd.DataFrame([{
+                    "nombre": nombre,
+                    "direccion": direccion,
+                    "telefono": telefono
+                }])
 
-        total_mes = df_mes["monto_cliente"].sum()
+                clientes_actualizados = pd.concat([clientes_df, nuevo_cliente], ignore_index=True)
+                guardar_clientes(clientes_actualizados)
 
-        st.metric("💰 Total facturado en el mes", f"${total_mes:,.0f}")
+                st.success("Cliente agregado correctamente")
+                st.rerun()
 
-        st.subheader("Ingresos por cliente")
-        st.dataframe(
-            df_mes.groupby("cliente")["monto_cliente"].sum().reset_index()
-        )
+    # -------------------------
+    # MODIFICAR CLIENTE
+    # -------------------------
+    elif opcion == "✏️ Modificar cliente":
+
+        st.subheader("Modificar cliente")
+
+        if clientes_df.empty:
+            st.warning("No hay clientes registrados")
+        else:
+            cliente_seleccionado = st.selectbox(
+                "Selecciona cliente",
+                clientes_df["nombre"]
+            )
+
+            fila = clientes_df[clientes_df["nombre"] == cliente_seleccionado].iloc[0]
+
+            with st.form("form_modificar"):
+                nuevo_nombre = st.text_input("Nombre", fila["nombre"])
+                nueva_direccion = st.text_input("Dirección", fila["direccion"])
+                nuevo_telefono = st.text_input("Teléfono", str(fila["telefono"]))
+
+                actualizar = st.form_submit_button("Actualizar cliente")
+
+                if actualizar:
+                    clientes_df.loc[
+                        clientes_df["nombre"] == cliente_seleccionado,
+                        ["nombre", "direccion", "telefono"]
+                    ] = [nuevo_nombre, nueva_direccion, nuevo_telefono]
+
+                    guardar_clientes(clientes_df)
+                    st.success("Cliente actualizado")
+                    st.rerun()
+
+    # -------------------------
+    # ELIMINAR CLIENTE
+    # -------------------------
+    elif opcion == "🗑️ Eliminar cliente":
+
+        st.subheader("Eliminar cliente")
+
+        if clientes_df.empty:
+            st.warning("No hay clientes registrados")
+        else:
+            cliente_borrar = st.selectbox(
+                "Selecciona cliente a eliminar",
+                clientes_df["nombre"]
+            )
+
+            if st.button("Eliminar definitivamente"):
+                clientes_df = clientes_df[clientes_df["nombre"] != cliente_borrar]
+                guardar_clientes(clientes_df)
+                st.success("Cliente eliminado")
+                st.rerun()
+
+    # Mostrar lista de clientes
+    st.subheader("Lista actual de clientes")
+    st.dataframe(clientes_df)
