@@ -12,7 +12,7 @@ ARCH_CLIENTES = "clientes.xlsx"
 ARCH_SERVICIOS = "servicios.xlsx"
 ARCH_REGISTROS = "registros_diarios.xlsx"
 
-# Crear archivos si no existen (estructura correcta)
+# Crear archivos si no existen
 if not os.path.exists(ARCH_TRABAJADORES):
     pd.DataFrame(columns=["usuario", "password", "nombre"]).to_excel(
         ARCH_TRABAJADORES, index=False, engine="openpyxl"
@@ -40,13 +40,12 @@ if not os.path.exists(ARCH_REGISTROS):
     ]).to_excel(ARCH_REGISTROS, index=False, engine="openpyxl")
 
 # =========================
-# FUNCIONES SEGURAS DE CARGA
+# FUNCIONES SEGURAS
 # =========================
 
 def cargar_excel_seguro(ruta, columnas_esperadas):
     df = pd.read_excel(ruta, engine="openpyxl")
 
-    # Si faltan columnas, las crea vacías (EVITA ERRORES)
     for col in columnas_esperadas:
         if col not in df.columns:
             df[col] = ""
@@ -64,7 +63,7 @@ if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
     st.session_state["rol"] = None
     st.session_state["usuario"] = None
-    st.session_state["menu"] = "Registro Diario"
+    st.session_state["menu"] = None   # ahora parte sin menú seleccionado
 
 st.title("🔐 Acceso - Mantenciones Jardín & Piscina")
 
@@ -75,7 +74,6 @@ if not st.session_state["autenticado"]:
 
     if st.button("Ingresar"):
 
-        # ADMIN
         if usuario == "admin" and password == "admin123":
             st.session_state["autenticado"] = True
             st.session_state["rol"] = "admin"
@@ -83,7 +81,6 @@ if not st.session_state["autenticado"]:
             st.rerun()
 
         else:
-            # TRABAJADOR
             trabajadores = cargar_excel_seguro(
                 ARCH_TRABAJADORES, ["usuario", "password", "nombre"]
             )
@@ -104,28 +101,50 @@ if not st.session_state["autenticado"]:
     st.stop()
 
 # =========================
-# MENÚ CON BOTONES
+# PANTALLA PRINCIPAL (MENÚ CON BOTONES GRANDES)
 # =========================
 
-st.sidebar.title(f"👤 Sesión: {st.session_state['usuario']}")
+st.title(f"👤 Bienvenido: {st.session_state['usuario']}")
 
-st.sidebar.markdown("## 📋 Menú")
+if st.session_state["menu"] is None:
 
-if st.session_state["rol"] == "admin":
-    if st.sidebar.button("🗓 Registro Diario"):
-        st.session_state["menu"] = "Registro Diario"
-    if st.sidebar.button("👥 Clientes"):
-        st.session_state["menu"] = "Clientes"
-    if st.sidebar.button("🛠 Servicios"):
-        st.session_state["menu"] = "Servicios"
-    if st.sidebar.button("👷 Trabajadores"):
-        st.session_state["menu"] = "Trabajadores"
-else:
-    if st.sidebar.button("🗓 Registro Diario"):
-        st.session_state["menu"] = "Registro Diario"
+    st.markdown("## 📋 Menú Principal")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("🗓 Registro Diario"):
+            st.session_state["menu"] = "Registro Diario"
+            st.rerun()
+
+    if st.session_state["rol"] == "admin":
+
+        with col2:
+            if st.button("👥 Clientes"):
+                st.session_state["menu"] = "Clientes"
+                st.rerun()
+
+        col3, col4 = st.columns(2)
+
+        with col3:
+            if st.button("🛠 Servicios"):
+                st.session_state["menu"] = "Servicios"
+                st.rerun()
+
+        with col4:
+            if st.button("👷 Trabajadores"):
+                st.session_state["menu"] = "Trabajadores"
+                st.rerun()
+
+    st.stop()
+
+# Botón para volver al menú siempre visible
+if st.button("⬅️ Volver al menú principal"):
+    st.session_state["menu"] = None
+    st.rerun()
 
 # =========================
-# CARGA DE DATOS (SEGURA)
+# CARGA DE DATOS
 # =========================
 
 clientes = cargar_excel_seguro(
