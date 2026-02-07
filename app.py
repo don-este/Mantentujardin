@@ -38,7 +38,7 @@ def guardar_registros(df):
     df.to_excel(ARCHIVO_REGISTROS, index=False, engine="openpyxl")
 
 # ======================================================
-# LOGIN SIMPLE (para celular)
+# LOGIN (SE MANTIENE)
 # ======================================================
 
 if "autenticado" not in st.session_state:
@@ -60,23 +60,46 @@ if not st.session_state["autenticado"]:
     st.stop()
 
 # ======================================================
-# APP PRINCIPAL
+# MENÚ PRINCIPAL CON BOTONES (NUEVO)
 # ======================================================
 
 st.title("🌿 Sistema de Mantenciones")
 
-menu = st.sidebar.selectbox(
-    "Menú",
-    ["Registro Diario", "Clientes"]
-)
+# Guardamos la opción de menú en session_state
+if "pantalla" not in st.session_state:
+    st.session_state["pantalla"] = "menu"
 
+# --- BOTONES DEL MENÚ ---
+if st.session_state["pantalla"] == "menu":
+
+    st.subheader("Selecciona una opción")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("📅 Registro Diario", use_container_width=True):
+            st.session_state["pantalla"] = "registro"
+            st.rerun()
+
+    with col2:
+        if st.button("👥 Clientes", use_container_width=True):
+            st.session_state["pantalla"] = "clientes"
+            st.rerun()
+
+    st.stop()  # Detiene aquí hasta elegir opción
+
+# Cargar datos (solo después del menú)
 clientes_df = cargar_clientes()
 registros_df = cargar_registros()
 
 # ======================================================
 # 1️⃣ REGISTRO DIARIO
 # ======================================================
-if menu == "Registro Diario":
+if st.session_state["pantalla"] == "registro":
+
+    if st.button("⬅️ Volver al menú"):
+        st.session_state["pantalla"] = "menu"
+        st.rerun()
 
     st.header("📅 Registro Diario")
 
@@ -84,7 +107,6 @@ if menu == "Registro Diario":
 
         fecha = st.date_input("Fecha", date.today())
 
-        # Lista de clientes dinámica
         lista_clientes = list(clientes_df["nombre"]) if not clientes_df.empty else ["(Sin clientes)"]
 
         cliente = st.selectbox("Cliente", lista_clientes)
@@ -116,15 +138,19 @@ if menu == "Registro Diario":
             guardar_registros(registros_actualizados)
 
             st.success("✅ Registro diario guardado correctamente")
+            st.rerun()
 
-    # Mostrar últimos registros
     st.subheader("Últimos registros")
     st.dataframe(registros_df.tail(10))
 
 # ======================================================
 # 2️⃣ CLIENTES (CRUD)
 # ======================================================
-elif menu == "Clientes":
+elif st.session_state["pantalla"] == "clientes":
+
+    if st.button("⬅️ Volver al menú"):
+        st.session_state["pantalla"] = "menu"
+        st.rerun()
 
     st.header("👥 Gestión de Clientes")
 
@@ -215,6 +241,5 @@ elif menu == "Clientes":
                 st.success("Cliente eliminado")
                 st.rerun()
 
-    # Mostrar lista de clientes
     st.subheader("Lista actual de clientes")
     st.dataframe(clientes_df)
