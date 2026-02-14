@@ -16,6 +16,7 @@ def inicializar_archivos():
             "nombre",
             "direccion",
             "telefono",
+            "servicio",
             "tipo_contrato",
             "valor"
         ]).to_csv("clientes.csv", index=False)
@@ -40,7 +41,6 @@ def inicializar_archivos():
             "pago_trabajador"
         ]).to_csv("registros.csv", index=False)
 
-    # asegurar admin
     trabajadores = pd.read_csv("trabajadores.csv")
     if not (trabajadores["usuario"] == "admin").any():
         nuevo_admin = pd.DataFrame([{
@@ -83,6 +83,15 @@ def login():
             st.rerun()
         else:
             st.error("Credenciales inválidas")
+
+# =========================
+# BOTÓN VOLVER
+# =========================
+
+def boton_volver():
+    if st.button("⬅ Volver al menú", use_container_width=True):
+        st.session_state["menu"] = "principal"
+        st.rerun()
 
 # =========================
 # MENU PRINCIPAL
@@ -131,32 +140,33 @@ def menu():
 
 def registro_diario():
 
+    boton_volver()
     st.title("Registro Diario")
 
     clientes = pd.read_csv("clientes.csv")
     servicios = pd.read_csv("servicios.csv")
     trabajadores = pd.read_csv("trabajadores.csv")
 
-    if clientes.empty or servicios.empty:
-        st.warning("Debes crear clientes y servicios primero")
+    if clientes.empty:
+        st.warning("Debes crear clientes primero")
         return
 
     fecha = st.date_input("Fecha", value=date.today())
     cliente = st.selectbox("Cliente", clientes["nombre"])
-    servicio = st.selectbox("Servicio", servicios["servicio"])
+
+    cliente_info = clientes[clientes["nombre"] == cliente].iloc[0]
+    servicio = cliente_info["servicio"]
+    valor = cliente_info["valor"]
 
     if st.session_state["rol"] == "admin":
         trabajador = st.selectbox("Trabajador", trabajadores["usuario"])
     else:
         trabajador = st.session_state["usuario"]
 
-    valor = st.number_input("Valor del servicio", min_value=0)
+    st.info(f"Servicio: {servicio}")
+    st.info(f"Valor automático: ${valor}")
 
     if st.button("Guardar Registro", use_container_width=True):
-
-        if valor <= 0:
-            st.error("Debes ingresar un valor mayor a 0")
-            return
 
         nuevo = pd.DataFrame([{
             "fecha": fecha,
@@ -173,25 +183,31 @@ def registro_diario():
 
         st.success("Registro guardado correctamente")
 
-    if st.button("⬅ Volver al menú", use_container_width=True):
-        st.session_state["menu"] = "principal"
-        st.rerun()
+    boton_volver()
 
 # =========================
 # CLIENTES
 # =========================
 
 def clientes():
+
+    boton_volver()
     st.title("Clientes")
+
+    servicios_df = pd.read_csv("servicios.csv")
+
+    if servicios_df.empty:
+        st.warning("Debes crear servicios primero")
+        boton_volver()
+        return
 
     nombre = st.text_input("Nombre del cliente")
     direccion = st.text_input("Dirección")
     telefono = st.text_input("Teléfono")
 
-    tipo_contrato = st.selectbox(
-        "Tipo de contrato",
-        ["Mensual", "Por visita"]
-    )
+    servicio = st.selectbox("Servicio principal", servicios_df["servicio"])
+
+    tipo_contrato = st.selectbox("Tipo de contrato", ["Mensual", "Por visita"])
 
     valor = st.number_input("Valor ($)", min_value=0)
 
@@ -209,12 +225,12 @@ def clientes():
             "nombre": nombre.strip(),
             "direccion": direccion.strip(),
             "telefono": telefono.strip(),
+            "servicio": servicio,
             "tipo_contrato": tipo_contrato,
             "valor": valor
         }])
 
         df = pd.read_csv("clientes.csv")
-
         df = pd.concat([df, nuevo], ignore_index=True)
         df.to_csv("clientes.csv", index=False)
 
@@ -222,15 +238,15 @@ def clientes():
 
     st.dataframe(pd.read_csv("clientes.csv"), use_container_width=True)
 
-    if st.button("⬅ Volver", use_container_width=True):
-        st.session_state["menu"] = "principal"
-        st.rerun()
+    boton_volver()
 
 # =========================
 # SERVICIOS
 # =========================
 
 def servicios():
+
+    boton_volver()
     st.title("Servicios")
 
     nombre = st.text_input("Nombre del servicio")
@@ -239,7 +255,7 @@ def servicios():
     if st.button("Agregar Servicio", use_container_width=True):
 
         if nombre.strip() == "":
-            st.error("El nombre del servicio es obligatorio")
+            st.error("El nombre es obligatorio")
             return
 
         nuevo = pd.DataFrame([{
@@ -255,15 +271,15 @@ def servicios():
 
     st.dataframe(pd.read_csv("servicios.csv"), use_container_width=True)
 
-    if st.button("⬅ Volver", use_container_width=True):
-        st.session_state["menu"] = "principal"
-        st.rerun()
+    boton_volver()
 
 # =========================
 # TRABAJADORES
 # =========================
 
 def trabajadores():
+
+    boton_volver()
     st.title("Trabajadores")
 
     usuario = st.text_input("Usuario")
@@ -272,7 +288,7 @@ def trabajadores():
     if st.button("Agregar Trabajador", use_container_width=True):
 
         if usuario.strip() == "" or password.strip() == "":
-            st.error("Usuario y contraseña son obligatorios")
+            st.error("Usuario y contraseña obligatorios")
             return
 
         nuevo = pd.DataFrame([{
@@ -289,21 +305,22 @@ def trabajadores():
 
     st.dataframe(pd.read_csv("trabajadores.csv"), use_container_width=True)
 
-    if st.button("⬅ Volver", use_container_width=True):
-        st.session_state["menu"] = "principal"
-        st.rerun()
+    boton_volver()
 
 # =========================
 # PAGOS
 # =========================
 
 def pagos():
+
+    boton_volver()
     st.title("Gestionar Pagos")
 
     registros = pd.read_csv("registros.csv")
 
     if registros.empty:
         st.info("No hay registros aún")
+        boton_volver()
         return
 
     st.dataframe(registros, use_container_width=True)
@@ -316,9 +333,7 @@ def pagos():
         registros.to_csv("registros.csv", index=False)
         st.success("Pago actualizado")
 
-    if st.button("⬅ Volver", use_container_width=True):
-        st.session_state["menu"] = "principal"
-        st.rerun()
+    boton_volver()
 
 # =========================
 # CONTROL PRINCIPAL
