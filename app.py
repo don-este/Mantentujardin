@@ -6,28 +6,6 @@ from datetime import date
 st.set_page_config(page_title="MantenTuJardín", layout="centered")
 
 # =========================
-# ESTILOS PERSONALIZADOS
-# =========================
-
-st.markdown("""
-<style>
-.big-button {
-    width: 100%;
-    height: 70px;
-    font-size: 20px;
-    font-weight: bold;
-    border-radius: 12px;
-    margin-bottom: 15px;
-}
-.center-logo {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# =========================
 # INICIALIZAR ARCHIVOS
 # =========================
 
@@ -53,7 +31,7 @@ def inicializar_archivos():
             "pago_trabajador"
         ]).to_csv("registros.csv", index=False)
 
-    # asegurar admin
+    # Asegurar que admin siempre exista
     trabajadores = pd.read_csv("trabajadores.csv")
     if not (trabajadores["usuario"] == "admin").any():
         nuevo_admin = pd.DataFrame([{
@@ -72,9 +50,8 @@ inicializar_archivos()
 
 def login():
 
-    st.markdown('<div class="center-logo">', unsafe_allow_html=True)
-    st.image("logo.png", width=220)
-    st.markdown('</div>', unsafe_allow_html=True)
+    if os.path.exists("logo.jpg"):
+        st.image("logo.jpg", width=220)
 
     st.title("Iniciar Sesión")
 
@@ -99,16 +76,17 @@ def login():
             st.error("Credenciales inválidas")
 
 # =========================
-# MENU PRINCIPAL PROFESIONAL
+# MENU PRINCIPAL
 # =========================
 
 def menu():
 
-    st.markdown('<div class="center-logo">', unsafe_allow_html=True)
-    st.image("logo.png", width=200)
-    st.markdown('</div>', unsafe_allow_html=True)
+    if os.path.exists("logo.jpg"):
+        st.image("logo.jpg", width=200)
 
     st.subheader(f"Bienvenido {st.session_state['usuario']}")
+
+    st.markdown("---")
 
     if st.button("📝 REGISTRO DIARIO", use_container_width=True):
         st.session_state["menu"] = "registro"
