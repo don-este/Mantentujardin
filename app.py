@@ -6,29 +6,46 @@ from datetime import date
 st.set_page_config(page_title="MantenTuJardín", layout="centered")
 
 # =========================
-# CREAR ARCHIVOS SI NO EXISTEN
+# ESTILOS PERSONALIZADOS
+# =========================
+
+st.markdown("""
+<style>
+.big-button {
+    width: 100%;
+    height: 70px;
+    font-size: 20px;
+    font-weight: bold;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+.center-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================
+# INICIALIZAR ARCHIVOS
 # =========================
 
 def inicializar_archivos():
 
-    # CLIENTES
     if not os.path.exists("clientes.csv"):
         pd.DataFrame(columns=["nombre", "direccion", "telefono"]).to_csv("clientes.csv", index=False)
 
-    # SERVICIOS
     if not os.path.exists("servicios.csv"):
         pd.DataFrame(columns=["servicio", "descripcion"]).to_csv("servicios.csv", index=False)
 
-    # TRABAJADORES
     if not os.path.exists("trabajadores.csv"):
-        admin = pd.DataFrame([{
+        pd.DataFrame([{
             "usuario": "admin",
             "password": "1234",
             "rol": "admin"
-        }])
-        admin.to_csv("trabajadores.csv", index=False)
+        }]).to_csv("trabajadores.csv", index=False)
 
-    # REGISTROS
     if not os.path.exists("registros.csv"):
         pd.DataFrame(columns=[
             "fecha", "cliente", "servicio",
@@ -36,12 +53,8 @@ def inicializar_archivos():
             "pago_trabajador"
         ]).to_csv("registros.csv", index=False)
 
-    # 🔥 Asegurar que admin exista SIEMPRE
+    # asegurar admin
     trabajadores = pd.read_csv("trabajadores.csv")
-
-    if "usuario" not in trabajadores.columns:
-        trabajadores = pd.DataFrame(columns=["usuario", "password", "rol"])
-
     if not (trabajadores["usuario"] == "admin").any():
         nuevo_admin = pd.DataFrame([{
             "usuario": "admin",
@@ -51,7 +64,6 @@ def inicializar_archivos():
         trabajadores = pd.concat([trabajadores, nuevo_admin], ignore_index=True)
         trabajadores.to_csv("trabajadores.csv", index=False)
 
-
 inicializar_archivos()
 
 # =========================
@@ -60,26 +72,22 @@ inicializar_archivos()
 
 def login():
 
-    st.title("🔐 Login")
+    st.markdown('<div class="center-logo">', unsafe_allow_html=True)
+    st.image("logo.png", width=220)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.title("Iniciar Sesión")
 
     usuario = st.text_input("Usuario")
     password = st.text_input("Contraseña", type="password")
 
-    if st.button("Ingresar"):
+    if st.button("Ingresar", use_container_width=True):
 
-        trabajadores = pd.read_csv("trabajadores.csv")
-
-        trabajadores = trabajadores.astype(str)
-        trabajadores["usuario"] = trabajadores["usuario"].str.strip()
-        trabajadores["password"] = trabajadores["password"].str.strip()
-        trabajadores["rol"] = trabajadores["rol"].str.strip()
-
-        usuario = usuario.strip()
-        password = password.strip()
+        trabajadores = pd.read_csv("trabajadores.csv").astype(str)
 
         usuario_encontrado = trabajadores[
-            (trabajadores["usuario"] == usuario) &
-            (trabajadores["password"] == password)
+            (trabajadores["usuario"] == usuario.strip()) &
+            (trabajadores["password"] == password.strip())
         ]
 
         if not usuario_encontrado.empty:
@@ -91,36 +99,42 @@ def login():
             st.error("Credenciales inválidas")
 
 # =========================
-# MENU PRINCIPAL (BOTONES)
+# MENU PRINCIPAL PROFESIONAL
 # =========================
 
 def menu():
 
-    st.title("🏡 MantenTuJardín")
+    st.markdown('<div class="center-logo">', unsafe_allow_html=True)
+    st.image("logo.png", width=200)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    if st.button("📝 Registro Diario"):
+    st.subheader(f"Bienvenido {st.session_state['usuario']}")
+
+    if st.button("📝 REGISTRO DIARIO", use_container_width=True):
         st.session_state["menu"] = "registro"
         st.rerun()
 
     if st.session_state["rol"] == "admin":
 
-        if st.button("👥 Clientes"):
+        if st.button("👥 CLIENTES", use_container_width=True):
             st.session_state["menu"] = "clientes"
             st.rerun()
 
-        if st.button("🛠 Servicios"):
+        if st.button("🛠 SERVICIOS", use_container_width=True):
             st.session_state["menu"] = "servicios"
             st.rerun()
 
-        if st.button("👷 Trabajadores"):
+        if st.button("👷 TRABAJADORES", use_container_width=True):
             st.session_state["menu"] = "trabajadores"
             st.rerun()
 
-        if st.button("💰 Gestionar Pagos"):
+        if st.button("💰 GESTIONAR PAGOS", use_container_width=True):
             st.session_state["menu"] = "pagos"
             st.rerun()
 
-    if st.button("🚪 Cerrar sesión"):
+    st.markdown("---")
+
+    if st.button("🚪 Cerrar sesión", use_container_width=True):
         st.session_state.clear()
         st.rerun()
 
@@ -130,7 +144,7 @@ def menu():
 
 def registro_diario():
 
-    st.title("📝 Registro Diario")
+    st.title("Registro Diario")
 
     clientes = pd.read_csv("clientes.csv")
     servicios = pd.read_csv("servicios.csv")
@@ -141,7 +155,6 @@ def registro_diario():
         return
 
     fecha = st.date_input("Fecha", value=date.today())
-
     cliente = st.selectbox("Cliente", clientes["nombre"])
     servicio = st.selectbox("Servicio", servicios["servicio"])
 
@@ -152,7 +165,7 @@ def registro_diario():
 
     valor = st.number_input("Valor del servicio", min_value=0)
 
-    if st.button("Guardar Registro"):
+    if st.button("Guardar Registro", use_container_width=True):
 
         nuevo = pd.DataFrame([{
             "fecha": fecha,
@@ -167,9 +180,9 @@ def registro_diario():
         registros = pd.concat([registros, nuevo], ignore_index=True)
         registros.to_csv("registros.csv", index=False)
 
-        st.success("Registro guardado")
+        st.success("Registro guardado correctamente")
 
-    if st.button("⬅ Volver"):
+    if st.button("⬅ Volver al menú", use_container_width=True):
         st.session_state["menu"] = "principal"
         st.rerun()
 
@@ -178,14 +191,13 @@ def registro_diario():
 # =========================
 
 def clientes():
-
-    st.title("👥 Clientes")
+    st.title("Clientes")
 
     nombre = st.text_input("Nombre")
     direccion = st.text_input("Dirección")
     telefono = st.text_input("Teléfono")
 
-    if st.button("Agregar Cliente"):
+    if st.button("Agregar Cliente", use_container_width=True):
         nuevo = pd.DataFrame([{
             "nombre": nombre,
             "direccion": direccion,
@@ -198,7 +210,7 @@ def clientes():
 
     st.dataframe(pd.read_csv("clientes.csv"))
 
-    if st.button("⬅ Volver"):
+    if st.button("⬅ Volver", use_container_width=True):
         st.session_state["menu"] = "principal"
         st.rerun()
 
@@ -207,13 +219,12 @@ def clientes():
 # =========================
 
 def servicios():
-
-    st.title("🛠 Servicios")
+    st.title("Servicios")
 
     nombre = st.text_input("Nombre del servicio")
     descripcion = st.text_area("Descripción")
 
-    if st.button("Agregar Servicio"):
+    if st.button("Agregar Servicio", use_container_width=True):
         nuevo = pd.DataFrame([{
             "servicio": nombre,
             "descripcion": descripcion
@@ -225,7 +236,7 @@ def servicios():
 
     st.dataframe(pd.read_csv("servicios.csv"))
 
-    if st.button("⬅ Volver"):
+    if st.button("⬅ Volver", use_container_width=True):
         st.session_state["menu"] = "principal"
         st.rerun()
 
@@ -234,18 +245,16 @@ def servicios():
 # =========================
 
 def trabajadores():
-
-    st.title("👷 Trabajadores")
+    st.title("Trabajadores")
 
     usuario = st.text_input("Usuario")
     password = st.text_input("Contraseña")
-    rol = st.selectbox("Rol", ["trabajador"])
 
-    if st.button("Agregar Trabajador"):
+    if st.button("Agregar Trabajador", use_container_width=True):
         nuevo = pd.DataFrame([{
             "usuario": usuario,
             "password": password,
-            "rol": rol
+            "rol": "trabajador"
         }])
         df = pd.read_csv("trabajadores.csv")
         df = pd.concat([df, nuevo], ignore_index=True)
@@ -254,7 +263,7 @@ def trabajadores():
 
     st.dataframe(pd.read_csv("trabajadores.csv"))
 
-    if st.button("⬅ Volver"):
+    if st.button("⬅ Volver", use_container_width=True):
         st.session_state["menu"] = "principal"
         st.rerun()
 
@@ -263,8 +272,7 @@ def trabajadores():
 # =========================
 
 def pagos():
-
-    st.title("💰 Gestionar Pagos")
+    st.title("Gestionar Pagos")
 
     registros = pd.read_csv("registros.csv")
 
@@ -274,15 +282,15 @@ def pagos():
 
     st.dataframe(registros)
 
-    index = st.number_input("Número de fila a pagar", min_value=0, max_value=len(registros)-1, step=1)
-    pago = st.number_input("Monto a pagar trabajador", min_value=0)
+    index = st.number_input("Número de fila", min_value=0, max_value=len(registros)-1, step=1)
+    pago = st.number_input("Pago trabajador", min_value=0)
 
-    if st.button("Guardar Pago"):
+    if st.button("Guardar Pago", use_container_width=True):
         registros.loc[index, "pago_trabajador"] = pago
         registros.to_csv("registros.csv", index=False)
         st.success("Pago actualizado")
 
-    if st.button("⬅ Volver"):
+    if st.button("⬅ Volver", use_container_width=True):
         st.session_state["menu"] = "principal"
         st.rerun()
 
@@ -299,21 +307,15 @@ if "menu" not in st.session_state:
 if not st.session_state["autenticado"]:
     login()
 else:
-
     if st.session_state["menu"] == "principal":
         menu()
-
     elif st.session_state["menu"] == "registro":
         registro_diario()
-
     elif st.session_state["menu"] == "clientes":
         clientes()
-
     elif st.session_state["menu"] == "servicios":
         servicios()
-
     elif st.session_state["menu"] == "trabajadores":
         trabajadores()
-
     elif st.session_state["menu"] == "pagos":
         pagos()
