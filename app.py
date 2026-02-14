@@ -12,7 +12,13 @@ st.set_page_config(page_title="MantenTuJardín", layout="centered")
 def inicializar_archivos():
 
     if not os.path.exists("clientes.csv"):
-        pd.DataFrame(columns=["nombre", "direccion", "telefono"]).to_csv("clientes.csv", index=False)
+        pd.DataFrame(columns=[
+            "nombre",
+            "direccion",
+            "telefono",
+            "tipo_contrato",
+            "valor"
+        ]).to_csv("clientes.csv", index=False)
 
     if not os.path.exists("servicios.csv"):
         pd.DataFrame(columns=["servicio", "descripcion"]).to_csv("servicios.csv", index=False)
@@ -26,12 +32,15 @@ def inicializar_archivos():
 
     if not os.path.exists("registros.csv"):
         pd.DataFrame(columns=[
-            "fecha", "cliente", "servicio",
-            "trabajador", "valor_servicio",
+            "fecha",
+            "cliente",
+            "servicio",
+            "trabajador",
+            "valor_servicio",
             "pago_trabajador"
         ]).to_csv("registros.csv", index=False)
 
-    # Asegurar que admin siempre exista
+    # asegurar admin
     trabajadores = pd.read_csv("trabajadores.csv")
     if not (trabajadores["usuario"] == "admin").any():
         nuevo_admin = pd.DataFrame([{
@@ -145,6 +154,10 @@ def registro_diario():
 
     if st.button("Guardar Registro", use_container_width=True):
 
+        if valor <= 0:
+            st.error("Debes ingresar un valor mayor a 0")
+            return
+
         nuevo = pd.DataFrame([{
             "fecha": fecha,
             "cliente": cliente,
@@ -171,22 +184,43 @@ def registro_diario():
 def clientes():
     st.title("Clientes")
 
-    nombre = st.text_input("Nombre")
+    nombre = st.text_input("Nombre del cliente")
     direccion = st.text_input("Dirección")
     telefono = st.text_input("Teléfono")
 
+    tipo_contrato = st.selectbox(
+        "Tipo de contrato",
+        ["Mensual", "Por visita"]
+    )
+
+    valor = st.number_input("Valor ($)", min_value=0)
+
     if st.button("Agregar Cliente", use_container_width=True):
+
+        if nombre.strip() == "" or direccion.strip() == "" or telefono.strip() == "":
+            st.error("Todos los campos son obligatorios")
+            return
+
+        if valor <= 0:
+            st.error("Debes ingresar un valor mayor a 0")
+            return
+
         nuevo = pd.DataFrame([{
-            "nombre": nombre,
-            "direccion": direccion,
-            "telefono": telefono
+            "nombre": nombre.strip(),
+            "direccion": direccion.strip(),
+            "telefono": telefono.strip(),
+            "tipo_contrato": tipo_contrato,
+            "valor": valor
         }])
+
         df = pd.read_csv("clientes.csv")
+
         df = pd.concat([df, nuevo], ignore_index=True)
         df.to_csv("clientes.csv", index=False)
-        st.success("Cliente agregado")
 
-    st.dataframe(pd.read_csv("clientes.csv"))
+        st.success("Cliente agregado correctamente")
+
+    st.dataframe(pd.read_csv("clientes.csv"), use_container_width=True)
 
     if st.button("⬅ Volver", use_container_width=True):
         st.session_state["menu"] = "principal"
@@ -203,16 +237,23 @@ def servicios():
     descripcion = st.text_area("Descripción")
 
     if st.button("Agregar Servicio", use_container_width=True):
+
+        if nombre.strip() == "":
+            st.error("El nombre del servicio es obligatorio")
+            return
+
         nuevo = pd.DataFrame([{
-            "servicio": nombre,
-            "descripcion": descripcion
+            "servicio": nombre.strip(),
+            "descripcion": descripcion.strip()
         }])
+
         df = pd.read_csv("servicios.csv")
         df = pd.concat([df, nuevo], ignore_index=True)
         df.to_csv("servicios.csv", index=False)
+
         st.success("Servicio agregado")
 
-    st.dataframe(pd.read_csv("servicios.csv"))
+    st.dataframe(pd.read_csv("servicios.csv"), use_container_width=True)
 
     if st.button("⬅ Volver", use_container_width=True):
         st.session_state["menu"] = "principal"
@@ -229,17 +270,24 @@ def trabajadores():
     password = st.text_input("Contraseña")
 
     if st.button("Agregar Trabajador", use_container_width=True):
+
+        if usuario.strip() == "" or password.strip() == "":
+            st.error("Usuario y contraseña son obligatorios")
+            return
+
         nuevo = pd.DataFrame([{
-            "usuario": usuario,
-            "password": password,
+            "usuario": usuario.strip(),
+            "password": password.strip(),
             "rol": "trabajador"
         }])
+
         df = pd.read_csv("trabajadores.csv")
         df = pd.concat([df, nuevo], ignore_index=True)
         df.to_csv("trabajadores.csv", index=False)
+
         st.success("Trabajador agregado")
 
-    st.dataframe(pd.read_csv("trabajadores.csv"))
+    st.dataframe(pd.read_csv("trabajadores.csv"), use_container_width=True)
 
     if st.button("⬅ Volver", use_container_width=True):
         st.session_state["menu"] = "principal"
@@ -258,7 +306,7 @@ def pagos():
         st.info("No hay registros aún")
         return
 
-    st.dataframe(registros)
+    st.dataframe(registros, use_container_width=True)
 
     index = st.number_input("Número de fila", min_value=0, max_value=len(registros)-1, step=1)
     pago = st.number_input("Pago trabajador", min_value=0)
