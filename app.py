@@ -5,32 +5,41 @@ from datetime import datetime
 
 st.set_page_config(page_title="MantenTuJardín", layout="centered")
 
-# ---------- INICIALIZAR ARCHIVOS ----------
+# ---------------------------------------------------
+# INICIALIZAR ARCHIVOS
+# ---------------------------------------------------
 
 def inicializar_archivos():
 
     if not os.path.exists("clientes.csv"):
-        df = pd.DataFrame(columns=["nombre", "direccion", "telefono",
-                                   "tipo_contrato", "valor", "servicio"])
-        df.to_csv("clientes.csv", index=False)
+        pd.DataFrame(columns=[
+            "nombre", "direccion", "telefono",
+            "tipo_contrato", "valor", "servicio"
+        ]).to_csv("clientes.csv", index=False)
 
     if not os.path.exists("servicios.csv"):
-        df = pd.DataFrame(columns=["nombre", "descripcion"])
-        df.to_csv("servicios.csv", index=False)
+        pd.DataFrame(columns=[
+            "nombre", "descripcion"
+        ]).to_csv("servicios.csv", index=False)
 
     if not os.path.exists("trabajadores.csv"):
-        df = pd.DataFrame(columns=["usuario", "password", "nombre", "rol"])
+        df = pd.DataFrame(columns=[
+            "usuario", "password", "nombre", "rol"
+        ])
         df.loc[0] = ["admin", "1234", "Administrador", "admin"]
         df.to_csv("trabajadores.csv", index=False)
 
     if not os.path.exists("registros.csv"):
-        df = pd.DataFrame(columns=["fecha", "cliente", "servicio",
-                                   "trabajador", "valor", "pagado"])
-        df.to_csv("registros.csv", index=False)
+        pd.DataFrame(columns=[
+            "fecha", "cliente", "servicio",
+            "trabajador", "valor", "pagado"
+        ]).to_csv("registros.csv", index=False)
 
 inicializar_archivos()
 
-# ---------- FUNCION SEGURA CSV ----------
+# ---------------------------------------------------
+# FUNCION CARGAR CSV SEGURA
+# ---------------------------------------------------
 
 def cargar_csv(nombre, columnas):
     df = pd.read_csv(nombre)
@@ -39,7 +48,9 @@ def cargar_csv(nombre, columnas):
             df[col] = ""
     return df
 
-# ---------- LOGIN ----------
+# ---------------------------------------------------
+# LOGIN
+# ---------------------------------------------------
 
 def login():
 
@@ -62,89 +73,107 @@ def login():
         ]
 
         if not user.empty:
-            st.session_state["usuario"] = usuario
-            st.session_state["rol"] = user.iloc[0]["rol"]
-            st.session_state["menu"] = "principal"
+            st.session_state.usuario = usuario
+            st.session_state.rol = user.iloc[0]["rol"]
+            st.session_state.menu = "principal"
             st.rerun()
         else:
             st.error("Credenciales inválidas")
 
-# ---------- MENU PRINCIPAL ----------
+# ---------------------------------------------------
+# MENU PRINCIPAL
+# ---------------------------------------------------
 
 def menu_principal():
 
     st.markdown("## 📋 Menú Principal")
 
     if st.button("📝 Registro Diario", use_container_width=True):
-        st.session_state["menu"] = "registro"
+        st.session_state.menu = "registro"
 
-    if st.session_state["rol"] == "admin":
+    if st.session_state.rol == "admin":
 
         if st.button("👥 Clientes", use_container_width=True):
-            st.session_state["menu"] = "clientes_menu"
+            st.session_state.menu = "clientes_menu"
 
         if st.button("🛠 Servicios", use_container_width=True):
-            st.session_state["menu"] = "servicios_menu"
+            st.session_state.menu = "servicios_menu"
 
         if st.button("👷 Trabajadores", use_container_width=True):
-            st.session_state["menu"] = "trabajadores_menu"
+            st.session_state.menu = "trabajadores_menu"
 
         if st.button("💰 Revisar Registros", use_container_width=True):
-            st.session_state["menu"] = "revisar"
+            st.session_state.menu = "revisar"
 
     if st.button("🚪 Cerrar sesión", use_container_width=True):
         st.session_state.clear()
         st.rerun()
 
-# ---------- SUBMENU SERVICIOS ----------
+# ---------------------------------------------------
+# SUBMENU CLIENTES
+# ---------------------------------------------------
 
-def servicios_menu():
+def clientes_menu():
 
-    st.markdown("## 🛠 Gestión de Servicios")
+    st.markdown("## 👥 Gestión de Clientes")
 
-    if st.button("➕ Nuevo Servicio", use_container_width=True):
-        st.session_state["menu"] = "servicio_nuevo"
+    if st.button("➕ Nuevo Cliente", use_container_width=True):
+        st.session_state.menu = "cliente_nuevo"
 
-    if st.button("✏ Modificar Servicio", use_container_width=True):
-        st.session_state["menu"] = "servicio_modificar"
+    if st.button("✏ Modificar Cliente", use_container_width=True):
+        st.session_state.menu = "cliente_modificar"
 
-    if st.button("🗑 Eliminar Servicio", use_container_width=True):
-        st.session_state["menu"] = "servicio_eliminar"
+    if st.button("🗑 Eliminar Cliente", use_container_width=True):
+        st.session_state.menu = "cliente_eliminar"
 
     if st.button("⬅ Volver", use_container_width=True):
-        st.session_state["menu"] = "principal"
+        st.session_state.menu = "principal"
         st.rerun()
 
-# ---------- NUEVO SERVICIO ----------
+# ---------------------------------------------------
+# NUEVO CLIENTE
+# ---------------------------------------------------
 
-def servicio_nuevo():
+def cliente_nuevo():
 
-    st.markdown("## ➕ Nuevo Servicio")
+    st.markdown("## ➕ Nuevo Cliente")
 
-    servicios = cargar_csv("servicios.csv", ["nombre", "descripcion"])
+    clientes = cargar_csv("clientes.csv",
+                          ["nombre", "direccion", "telefono",
+                           "tipo_contrato", "valor", "servicio"])
 
-    nombre = st.text_input("Nombre del servicio")
-    descripcion = st.text_area("Descripción")
+    nombre = st.text_input("Nombre")
+    direccion = st.text_input("Dirección")
+    telefono = st.text_input("Teléfono")
+    servicio = st.text_input("Servicio")
+    tipo = st.selectbox("Tipo de contrato", ["Mensual", "Por Visita"])
+    valor = st.number_input("Valor", min_value=0)
 
-    if st.button("Guardar Servicio", use_container_width=True):
+    if st.button("Guardar", use_container_width=True):
 
-        if nombre.strip() == "":
-            st.error("El nombre es obligatorio")
+        if nombre.strip() == "" or servicio.strip() == "" or valor == 0:
+            st.error("Complete los campos obligatorios")
         else:
             nuevo = pd.DataFrame([{
                 "nombre": nombre,
-                "descripcion": descripcion
+                "direccion": direccion,
+                "telefono": telefono,
+                "tipo_contrato": tipo,
+                "valor": valor,
+                "servicio": servicio
             }])
 
-            servicios = pd.concat([servicios, nuevo], ignore_index=True)
-            servicios.to_csv("servicios.csv", index=False)
-            st.success("Servicio guardado")
+            clientes = pd.concat([clientes, nuevo], ignore_index=True)
+            clientes.to_csv("clientes.csv", index=False)
+            st.success("Cliente guardado")
 
     if st.button("⬅ Volver", use_container_width=True):
-        st.session_state["menu"] = "servicios_menu"
+        st.session_state.menu = "clientes_menu"
         st.rerun()
 
-# ---------- REGISTRO DIARIO ----------
+# ---------------------------------------------------
+# REGISTRO DIARIO
+# ---------------------------------------------------
 
 def registro_diario():
 
@@ -192,22 +221,52 @@ def registro_diario():
         st.success("Registro guardado")
 
     if st.button("⬅ Volver", use_container_width=True):
-        st.session_state["menu"] = "principal"
+        st.session_state.menu = "principal"
         st.rerun()
 
-# ---------- CONTROL PRINCIPAL ----------
+# ---------------------------------------------------
+# REVISAR REGISTROS
+# ---------------------------------------------------
+
+def revisar():
+
+    st.markdown("## 💰 Revisar Registros")
+
+    registros = cargar_csv("registros.csv",
+                           ["fecha", "cliente", "servicio",
+                            "trabajador", "valor", "pagado"])
+
+    if registros.empty:
+        st.info("No hay registros.")
+    else:
+        st.dataframe(registros)
+
+    if st.button("⬅ Volver", use_container_width=True):
+        st.session_state.menu = "principal"
+        st.rerun()
+
+# ---------------------------------------------------
+# CONTROL PRINCIPAL
+# ---------------------------------------------------
 
 if "usuario" not in st.session_state:
     login()
 else:
 
-    menu = st.session_state.get("menu", "principal")
+    if "menu" not in st.session_state:
+        st.session_state.menu = "principal"
 
-    if menu == "principal":
+    if st.session_state.menu == "principal":
         menu_principal()
-    elif menu == "servicios_menu":
-        servicios_menu()
-    elif menu == "servicio_nuevo":
-        servicio_nuevo()
-    elif menu == "registro":
+
+    elif st.session_state.menu == "clientes_menu":
+        clientes_menu()
+
+    elif st.session_state.menu == "cliente_nuevo":
+        cliente_nuevo()
+
+    elif st.session_state.menu == "registro":
         registro_diario()
+
+    elif st.session_state.menu == "revisar":
+        revisar()
