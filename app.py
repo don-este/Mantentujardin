@@ -177,52 +177,124 @@ def cliente_nuevo():
 
 def registro_diario():
 
-    st.markdown("## 📝 Registro Diario")
+    st.title("📅 Registro Diario")
 
-    clientes = cargar_csv("clientes.csv",
-                          ["nombre", "direccion", "telefono",
-                           "tipo_contrato", "valor", "servicio"])
-
-    trabajadores = cargar_csv("trabajadores.csv",
-                               ["usuario", "password", "nombre", "rol"])
-
-    if clientes.empty:
-        st.warning("No hay clientes registrados.")
-        return
-
-    cliente = st.selectbox("Cliente", clientes["nombre"])
-    cliente_info = clientes[clientes["nombre"] == cliente].iloc[0]
-
-    trabajador = st.selectbox(
-        "Trabajador",
-        trabajadores[trabajadores["rol"] == "trabajador"]["nombre"]
+    opcion = st.radio(
+        "Seleccione una opción",
+        ["➕ Nuevo registro", "✏ Modificar registro", "🗑 Eliminar registro"]
     )
 
-    fecha = st.date_input("Fecha", datetime.today())
+    clientes = cargar_clientes()
+    trabajadores = cargar_trabajadores()
+    registros = cargar_registros()
 
-    if st.button("Guardar Registro", use_container_width=True):
+    # ==============================
+    # NUEVO REGISTRO
+    # ==============================
+    if opcion == "➕ Nuevo registro":
 
-        nuevo = pd.DataFrame([{
-            "fecha": fecha,
-            "cliente": cliente,
-            "servicio": cliente_info["servicio"],
-            "trabajador": trabajador,
-            "valor": cliente_info["valor"],
-            "pagado": "No"
-        }])
+        if clientes.empty:
+            st.warning("No hay clientes registrados.")
+            return
 
-        registros = cargar_csv("registros.csv",
-                               ["fecha", "cliente", "servicio",
-                                "trabajador", "valor", "pagado"])
+        cliente_nombre = st.selectbox(
+            "Seleccione Cliente",
+            clientes["nombre"].unique()
+        )
 
-        registros = pd.concat([registros, nuevo], ignore_index=True)
-        registros.to_csv("registros.csv", index=False)
+        cliente_info = clientes[clientes["nombre"] == cliente_nombre].iloc[0]
 
-        st.success("Registro guardado")
+        servicio = cliente_info.get("servicio", "No definido")
+        tipo_contrato = cliente_info.get("tipo_contrato", "No definido")
+        valor = cliente_info.get("valor", 0)
 
-    if st.button("⬅ Volver", use_container_width=True):
-        st.session_state.menu = "principal"
-        st.rerun()
+        st.write(f"**Servicio:** {servicio}")
+        st.write(f"**Tipo de contrato:** {tipo_contrato}")
+        st.write(f"**Valor:** ${valor}")
+
+        trabajador = st.selectbox(
+            "Seleccione Trabajador",
+            trabajadores["nombre"].unique()
+        )
+
+        fecha = st.date_input("Fecha")
+        estado = st.selectbox("Estado", ["Realizado", "Pendiente"])
+        observaciones = st.text_area("Observaciones")
+
+        if st.button("Guardar Registro"):
+
+            nuevo = pd.DataFrame([{
+                "fecha": fecha,
+                "cliente": cliente_nombre,
+                "servicio": servicio,
+                "trabajador": trabajador,
+                "tipo_contrato": tipo_contrato,
+                "valor": valor,
+                "estado": estado,
+                "observaciones": observaciones
+            }])
+
+            registros = pd.concat([registros, nuevo], ignore_index=True)
+            registros.to_csv("registros.csv", index=False)
+
+            st.success("Registro guardado correctamente")
+
+    # ==============================
+    # MODIFICAR REGISTRO
+    # ==============================
+    elif opcion == "✏ Modificar registro":
+
+        if registros.empty:
+            st.warning("No hay registros disponibles.")
+            return
+
+        registro_id = st.selectbox(
+            "Seleccione registro",
+            registros.index
+        )
+
+        registro = registros.loc[registro_id]
+
+        nuevo_estado = st.selectbox(
+            "Estado",
+            ["Realizado", "Pendiente"],
+            index=0 if registro["estado"] == "Realizado" else 1
+        )
+
+        nuevas_obs = st.text_area(
+            "Observaciones",
+            value=registro["observaciones"]
+        )
+
+        if st.button("Actualizar Registro"):
+
+            registros.at[registro_id, "estado"] = nuevo_estado
+            registros.at[registro_id, "observaciones"] = nuevas_obs
+
+            registros.to_csv("registros.csv", index=False)
+            st.success("Registro actualizado")
+
+    # ==============================
+    # ELIMINAR REGISTRO
+    # ==============================
+    elif opcion == "🗑 Eliminar registro":
+
+        if registros.empty:
+            st.warning("No hay registros para eliminar.")
+            return
+
+        registro_id = st.selectbox(
+            "Seleccione registro a eliminar",
+            registros.index
+        )
+
+        if st.button("Eliminar"):
+
+            registros = registros.drop(registro_id)
+            registros.to_csv("registros.csv", index=False)
+
+            st.success("Registro eliminado")
+
 
 # ---------------------------------------------------
 # REVISAR REGISTROS
@@ -270,3 +342,4 @@ else:
 
     elif st.session_state.menu == "revisar":
         revisar()
+
